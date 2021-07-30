@@ -32,6 +32,13 @@ import java.util.stream.IntStream;
 
 import static java.lang.Math.abs;
 
+/**
+ * A tool for visualizing the observed death counts published by CDC.
+ *
+ * @author Gene McCulley (mcculley@stackframe.com)
+ *
+ * This code is released under the MIT License.
+ */
 public class ObservedDeathVisualizer extends JFrame {
 
     private final String region;
