@@ -22,13 +22,13 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.lang.Math.abs;
 
@@ -291,14 +291,10 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static double standardDeviation(final List<Integer> values) {
+    private static double standardDeviation(final Collection<Integer> values) {
         final double mean = values.stream().mapToInt(Integer::intValue).average().getAsDouble();
         final double sumOfSquaresOfDistance = values.stream().mapToDouble((x) -> Math.pow(x - mean, 2)).sum();
         return Math.sqrt(sumOfSquaresOfDistance / values.size());
-    }
-
-    private static double standardDeviation(final IntStream s) {
-        return standardDeviation(s.boxed().collect(Collectors.toList()));
     }
 
     private static boolean close(final double a, final double b, final double epsilon) {
@@ -306,9 +302,9 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     static {
-        assert standardDeviation(IntStream.of(50, 50, 50, 50)) == 0;
-        assert standardDeviation(IntStream.of(2, 4, 4, 4, 5, 5, 7, 9)) == 2;
-        assert close(standardDeviation(IntStream.of(9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4)),
+        assert standardDeviation(List.of(50, 50, 50, 50)) == 0;
+        assert standardDeviation(List.of(2, 4, 4, 4, 5, 5, 7, 9)) == 2;
+        assert close(standardDeviation(List.of(9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4)),
                 2.983, 0.1);
     }
 
