@@ -21,7 +21,6 @@ import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -292,14 +291,14 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static double standardDeviation(final int[] values) {
-        final double mean = Arrays.stream(values).average().getAsDouble();
-        final double sumOfSquaresOfDistance = Arrays.stream(values).mapToDouble((x) -> Math.pow(x - mean, 2)).sum();
-        return Math.sqrt(sumOfSquaresOfDistance / values.length);
+    private static double standardDeviation(final List<Integer> values) {
+        final double mean = values.stream().mapToInt(Integer::intValue).average().getAsDouble();
+        final double sumOfSquaresOfDistance = values.stream().mapToDouble((x) -> Math.pow(x - mean, 2)).sum();
+        return Math.sqrt(sumOfSquaresOfDistance / values.size());
     }
 
     private static double standardDeviation(final IntStream s) {
-        return standardDeviation(s.toArray());
+        return standardDeviation(s.boxed().collect(Collectors.toList()));
     }
 
     private static boolean close(final double a, final double b, final double epsilon) {
@@ -396,7 +395,7 @@ public class ObservedDeathVisualizer extends JFrame {
                 points.subList(points.size() - (numPreviousPoints + 1), points.size() - 1).stream().map((p) -> p.count)
                         .collect(
                                 Collectors.toList());
-        final double σ = standardDeviation(previousPoints.stream().mapToInt(Integer::intValue));
+        final double σ = standardDeviation(previousPoints);
         final double deviation = lastPoint - nextToLastPoint;
         if (deviation < 0 && abs(deviation) > σ) {
             return trimReportingLag(points.subList(0, points.size() - 2));
