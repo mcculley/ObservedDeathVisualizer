@@ -36,7 +36,7 @@ import static java.lang.Math.abs;
  * A tool for visualizing the observed death counts published by CDC.
  *
  * @author Gene McCulley (mcculley@stackframe.com)
- *
+ * <p>
  * This code is released under the MIT License.
  */
 public class ObservedDeathVisualizer extends JFrame {
@@ -231,6 +231,7 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.drawString(String.format("Observed Deaths, %s, All Causes, By Week, ", region) + minDate + " - " + maxDate,
                 50, 50);
         g2d.drawString("data retrieved from cdc.gov on " + LocalDate.now(), 50, 950);
+        g2d.drawString("learn more at https://mcculley.github.io/VisualizingObservedDeaths/", 50, 975);
         final int x = 700;
         int y = 950;
         final int lineSize = 12;
@@ -377,6 +378,15 @@ public class ObservedDeathVisualizer extends JFrame {
         return new DataSet(region, trimReportingLag(list));
     }
 
+    /**
+     * The data we get from CDC is incomplete for the most recent weeks. It apparently takes many weeks for the states
+     * to collect death certificates and report them to the CDC. This leads to a graph that looks like things are vastly
+     * improved for the most recent weeks, which is misleading. This function trims data which is more than one standard
+     * deviation below the previous ten points.
+     *
+     * @param points a List of DataPoint objects
+     * @return a potentially trimmed list of data points
+     */
     private static List<DataPoint> trimReportingLag(final List<DataPoint> points) {
         final int lastPoint = points.get(points.size() - 1).count;
         final int nextToLastPoint = points.get(points.size() - 2).count;
@@ -407,7 +417,7 @@ public class ObservedDeathVisualizer extends JFrame {
         return regions;
     }
 
-    private static final Color startColor = new Color(255, 0, 0);
+    private static final Color startColor = new Color(255, 128, 0);
     private static final Color endColor = new Color(0, 0, 255);
 
     public static Color interpolate(final Color endColor, final Color startColor, final double t) {
