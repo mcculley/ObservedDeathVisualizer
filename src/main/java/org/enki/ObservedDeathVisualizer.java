@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -291,25 +292,26 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static double mean(final int[] d) {
-        double total = 0;
-        for (final double v : d) {
-            total += v;
-        }
-
-        return total / d.length;
-    }
-
     private static double standardDeviation(final IntStream s) {
         final int[] values = s.toArray();
         double sumOfSquaresOfDistance = 0.0;
-        final double mean = mean(values);
-        final int length = values.length;
+        final double mean = Arrays.stream(values).average().getAsDouble();
         for (final double num : values) {
             sumOfSquaresOfDistance += Math.pow(num - mean, 2);
         }
 
-        return Math.sqrt(sumOfSquaresOfDistance / length);
+        return Math.sqrt(sumOfSquaresOfDistance / values.length);
+    }
+
+    private static boolean close(final double a, final double b, final double epsilon) {
+        return abs(a - b) <= epsilon;
+    }
+
+    static {
+        assert standardDeviation(IntStream.of(50, 50, 50, 50)) == 0;
+        assert standardDeviation(IntStream.of(2, 4, 4, 4, 5, 5, 7, 9)) == 2;
+        assert close(standardDeviation(IntStream.of(9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4)),
+                2.983, 0.1);
     }
 
     private static String normalize(final String s) {
