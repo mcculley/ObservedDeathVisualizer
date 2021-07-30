@@ -292,15 +292,14 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static double standardDeviation(final IntStream s) {
-        final int[] values = s.toArray();
-        double sumOfSquaresOfDistance = 0.0;
+    private static double standardDeviation(final int[] values) {
         final double mean = Arrays.stream(values).average().getAsDouble();
-        for (final double num : values) {
-            sumOfSquaresOfDistance += Math.pow(num - mean, 2);
-        }
-
+        final double sumOfSquaresOfDistance = Arrays.stream(values).mapToDouble((x)-> Math.pow(x - mean, 2)).sum();
         return Math.sqrt(sumOfSquaresOfDistance / values.length);
+    }
+
+    private static double standardDeviation(final IntStream s){
+        return standardDeviation(s.toArray());
     }
 
     private static boolean close(final double a, final double b, final double epsilon) {
