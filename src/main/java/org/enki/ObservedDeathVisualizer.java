@@ -24,9 +24,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,9 @@ public class ObservedDeathVisualizer extends JFrame {
     private final LocalDate minDate;
     private final LocalDate maxDate;
     private final Duration duration;
+    private final Map<Integer, Color> yearColors = new HashMap<>();
+    private static boolean interpolateColors = false;
+    private static boolean interpolateUsingHSB = false;
 
     public ObservedDeathVisualizer(final String region, final List<DataPoint> data) {
         super(region);
@@ -58,6 +63,11 @@ public class ObservedDeathVisualizer extends JFrame {
         setSize(1000, 1000);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        yearColors.put(2017, Color.PINK);
+        yearColors.put(2018, Color.GRAY);
+        yearColors.put(2019, Color.BLUE);
+        yearColors.put(2020, Color.RED);
+        yearColors.put(2021, Color.GREEN);
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -163,7 +173,15 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private Color getColor(final LocalDate date) {
-        return interpolate(endColor, startColor, distanceAlongDuration(date));
+        if (interpolateColors) {
+            if (interpolateUsingHSB) {
+                return interpolateHSB(endColor, startColor, distanceAlongDuration(date));
+            } else {
+                return interpolateRGB(endColor, startColor, distanceAlongDuration(date));
+            }
+        } else {
+            return yearColors.get(date.getYear());
+        }
     }
 
     private void plotData(final Graphics2D g2d, final List<DataPoint> points, final int maxCount) {
@@ -416,16 +434,34 @@ public class ObservedDeathVisualizer extends JFrame {
     private static final Color startColor = new Color(255, 128, 0);
     private static final Color endColor = new Color(0, 0, 255);
 
-    public static Color interpolate(final Color endColor, final Color startColor, final double t) {
+    public static Color interpolateRGB(final Color endColor, final Color startColor, final double t) {
         if (t < 0 || t > 1) {
             throw new IllegalArgumentException();
         }
 
-        final double inverse = 1.0 - t;
+        final float inverse = 1.0f - (float) t;
         final int r = (int) (endColor.getRed() * t + startColor.getRed() * inverse);
         final int g = (int) (endColor.getGreen() * t + startColor.getGreen() * inverse);
         final int b = (int) (endColor.getBlue() * t + startColor.getBlue() * inverse);
         return new Color(r, g, b);
+    }
+
+    public static Color interpolateHSB(final Color endColor, final Color startColor, final double t) {
+        if (t < 0 || t > 1) {
+            throw new IllegalArgumentException();
+        }
+
+        final float[] startHSB = new float[3];
+        Color.RGBtoHSB(startColor.getRed(), startColor.getGreen(), startColor.getBlue(), startHSB);
+
+        final float[] endHSB = new float[3];
+        Color.RGBtoHSB(endColor.getRed(), endColor.getGreen(), endColor.getBlue(), endHSB);
+
+        final float inverse = 1.0f - (float) t;
+        final float h = endHSB[0] * (float) t + startHSB[0] * inverse;
+        final float s = endHSB[1] * (float) t + startHSB[1] * inverse;
+        final float B = endHSB[2] * (float) t + startHSB[2] * inverse;
+        return Color.getHSBColor(h, s, B);
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
