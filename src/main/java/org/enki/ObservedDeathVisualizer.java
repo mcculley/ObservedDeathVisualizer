@@ -22,7 +22,6 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
+import static org.enki.Statistics.standardDeviation;
 
 /**
  * A tool for visualizing the observed death counts published by CDC.
@@ -309,23 +309,6 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static double standardDeviation(final Collection<Integer> values) {
-        final double mean = values.stream().mapToInt(Integer::intValue).average().getAsDouble();
-        final double sumOfSquaresOfDistance = values.stream().mapToDouble((x) -> Math.pow(x - mean, 2)).sum();
-        return Math.sqrt(sumOfSquaresOfDistance / values.size());
-    }
-
-    private static boolean close(final double a, final double b, final double epsilon) {
-        return abs(a - b) <= epsilon;
-    }
-
-    static {
-        assert standardDeviation(List.of(50, 50, 50, 50)) == 0;
-        assert standardDeviation(List.of(2, 4, 4, 4, 5, 5, 7, 9)) == 2;
-        assert close(standardDeviation(List.of(9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4)),
-                2.983, 0.1);
-    }
-
     private static String normalize(final String s) {
         // get rid of UTF-8 noise
         final int length = s.length();
@@ -451,17 +434,14 @@ public class ObservedDeathVisualizer extends JFrame {
             throw new IllegalArgumentException();
         }
 
-        final float[] startHSB = new float[3];
-        Color.RGBtoHSB(startColor.getRed(), startColor.getGreen(), startColor.getBlue(), startHSB);
-
-        final float[] endHSB = new float[3];
-        Color.RGBtoHSB(endColor.getRed(), endColor.getGreen(), endColor.getBlue(), endHSB);
+        final float[] startHSB = Color.RGBtoHSB(startColor.getRed(), startColor.getGreen(), startColor.getBlue(), null);
+        final float[] endHSB = Color.RGBtoHSB(endColor.getRed(), endColor.getGreen(), endColor.getBlue(), null);
 
         final float inverse = 1.0f - (float) t;
         final float h = endHSB[0] * (float) t + startHSB[0] * inverse;
         final float s = endHSB[1] * (float) t + startHSB[1] * inverse;
-        final float B = endHSB[2] * (float) t + startHSB[2] * inverse;
-        return Color.getHSBColor(h, s, B);
+        final float b = endHSB[2] * (float) t + startHSB[2] * inverse;
+        return Color.getHSBColor(h, s, b);
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
