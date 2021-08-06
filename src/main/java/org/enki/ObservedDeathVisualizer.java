@@ -391,9 +391,8 @@ public class ObservedDeathVisualizer extends JFrame {
     public static DataSet parseDataSet(final String[] header, final String region, final Stream<String[]> lines) {
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
-        final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
 
-        final Stream<DataPoint> l = lines.filter(hasCount).map((line) -> {
+        final Stream<DataPoint> l = lines.map((line) -> {
             final String count = line[observedNumberColumn];
             final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
             return new DataPoint(date, Integer.parseInt(count));
@@ -437,8 +436,13 @@ public class ObservedDeathVisualizer extends JFrame {
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<String[]> unweighted = (line) -> !line[typeColumn].startsWith("Predicted");
 
+        final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
+
+        final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
+
         final Map<String, List<String[]>> regions =
-                lines.stream().filter(unweighted).collect(Collectors.groupingBy(classifier, Collectors.toList()));
+                lines.stream().filter(unweighted).filter(hasCount)
+                        .collect(Collectors.groupingBy(classifier, Collectors.toList()));
         return regions.entrySet().stream();
     }
 
