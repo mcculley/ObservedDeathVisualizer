@@ -532,7 +532,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
         final List<String[]> allLines = csvReader.readAll();
         System.out.println("generating graphs");
-        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).entrySet().stream();
+        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).entrySet().stream().parallel();
         regionLists.forEach((e) -> {
             final String region = e.getKey();
             final List<String[]> lines = e.getValue();
