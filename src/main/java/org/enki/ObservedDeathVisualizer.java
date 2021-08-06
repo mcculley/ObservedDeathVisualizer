@@ -30,7 +30,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -393,22 +392,19 @@ public class ObservedDeathVisualizer extends JFrame {
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
-        final List<DataPoint> list = new ArrayList<>();
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<String[]> unweighted = (line) -> !line[typeColumn].startsWith("Predicted");
 
-        lines.filter(unweighted).forEach((line) -> {
-            final String count = line[observedNumberColumn];
-            if (count.length() == 0) {
-                return;
-            }
+        final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
 
+        final Stream<DataPoint> l = lines.filter(unweighted).filter(hasCount).map((line) -> {
+            final String count = line[observedNumberColumn];
             final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
-            list.add(new DataPoint(date, Integer.parseInt(count)));
+            return new DataPoint(date, Integer.parseInt(count));
         });
 
-        return new DataSet(region, list);
+        return new DataSet(region, l.collect(Collectors.toList()));
     }
 
     /**
