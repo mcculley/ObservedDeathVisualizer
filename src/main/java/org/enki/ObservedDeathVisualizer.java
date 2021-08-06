@@ -442,6 +442,7 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
+    // This is only here because the Java type system cannot resolve T versus T[] with varargs.
     private static <T> List<T> newArrayList(final T o) {
         return Lists.newArrayList(o);
     }
