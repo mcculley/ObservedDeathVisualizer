@@ -1,6 +1,5 @@
 package org.enki;
 
-import com.google.common.collect.Lists;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
@@ -33,16 +32,12 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -393,13 +388,12 @@ public class ObservedDeathVisualizer extends JFrame {
         throw new IllegalArgumentException("could not find " + columnName);
     }
 
-    public static DataSet parseDataSet(final String region, final List<String[]> lines) {
-        final String[] header = lines.get(0);
+    public static DataSet parseDataSet(final String[] header, final String region, final List<String[]> lines) {
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
         final List<DataPoint> list = new ArrayList<>();
-        final Stream<String[]> nonHeaderLines = lines.stream().skip(1);
+        final Stream<String[]> nonHeaderLines = lines.stream();
         nonHeaderLines.forEach((line) -> {
             final String type = line[typeColumn];
 
@@ -446,18 +440,12 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    // This is only here because the Java type system cannot resolve T versus T[] with varargs.
-    private static <T> List<T> newArrayList(final T o) {
-        return Lists.newArrayList(o);
-    }
-
-    private static Stream<Map.Entry<String, List<String[]>>> splitRegions(final List<String[]> lines) {
-        final String[] header = lines.get(0);
+    private static Stream<Map.Entry<String, List<String[]>>> splitRegions(final String[] header,
+                                                                          final List<String[]> lines) {
         final int stateColumn = findHeaderIndex(header, "State");
         final Function<String[], String> classifier = (line) -> line[stateColumn];
-        final Supplier<List<String[]>> listSupplier = () -> newArrayList(header); // Every list has the header as the first element.
-        final Map<String, List<String[]>> regions = lines.stream().skip(1)
-                .collect(Collectors.groupingBy(classifier, Collectors.toCollection(listSupplier)));
+        final Map<String, List<String[]>> regions =
+                lines.stream().collect(Collectors.groupingBy(classifier, Collectors.toList()));
         return regions.entrySet().stream();
     }
 
@@ -534,12 +522,13 @@ public class ObservedDeathVisualizer extends JFrame {
         System.out.println("reading data from " + data);
         final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
         final List<String[]> allLines = csvReader.readAll();
+        final String[] header = allLines.remove(0);
         System.out.println("generating graphs");
-        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).parallel();
+        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(header, allLines).parallel();
         regionLists.forEach((e) -> {
             final String region = e.getKey();
             final List<String[]> lines = e.getValue();
-            final DataSet dataSet = parseDataSet(region, lines);
+            final DataSet dataSet = parseDataSet(header, region, lines);
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
