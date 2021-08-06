@@ -33,7 +33,10 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -447,15 +450,12 @@ public class ObservedDeathVisualizer extends JFrame {
         return Lists.newArrayList(o);
     }
 
-    public static Stream<Map.Entry<String, List<String[]>>> splitRegions(final List<String[]> lines) {
+    private static Stream<Map.Entry<String, List<String[]>>> splitRegions(final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
-        final Map<String, List<String[]>> regions = new HashMap<>();
-        lines.stream().skip(1).forEach((line) -> {
-            final String region = line[stateColumn];
-            final List<String[]> list = regions.computeIfAbsent(region, (s) -> newArrayList(header));
-            list.add(line);
-        });
+        final Function<String[], String> classifier = (line) -> line[stateColumn];
+        final Map<String, List<String[]>> regions = lines.stream().skip(1)
+                .collect(Collectors.groupingBy(classifier, Collectors.toCollection(() -> newArrayList(header))));
         return regions.entrySet().stream();
     }
 
