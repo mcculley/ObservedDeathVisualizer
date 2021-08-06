@@ -3,8 +3,11 @@ package org.enki;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
+import tech.units.indriya.quantity.Quantities;
 
 import javax.imageio.ImageIO;
+import javax.measure.Quantity;
+import javax.measure.quantity.Angle;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
 import static org.enki.Statistics.standardDeviation;
+import static tech.units.indriya.unit.Units.RADIAN;
 
 /**
  * A tool for visualizing the observed death counts published by CDC.
@@ -82,7 +86,7 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.setStroke(new BasicStroke(1));
         for (int i = 1; i <= 12; i++) {
             final MonthDay d = MonthDay.of(i, 1);
-            final double theta = monthDayToAngle(d);
+            final Quantity<Angle> theta = monthDayToAngle(d);
             final PolarCoordinate c = new PolarCoordinate(radius, theta);
             final Point2D p = c.toCartesian();
             g2d.drawLine(0, 0, (int) p.getX(), (int) p.getY());
@@ -204,26 +208,26 @@ public class ObservedDeathVisualizer extends JFrame {
         return new PolarCoordinate(p.count, dateToAngle(p.date));
     }
 
-    private static double dateToAngle(final LocalDate d) {
-        return (double) (d.getDayOfYear() - 1) / 366.0 * Math.PI * 2;
+    private static Quantity<Angle> dateToAngle(final LocalDate d) {
+        return Quantities.getQuantity((double) (d.getDayOfYear() - 1) / 366.0 * Math.PI * 2, RADIAN);
     }
 
-    private static double monthDayToAngle(final MonthDay d) {
+    private static Quantity<Angle> monthDayToAngle(final MonthDay d) {
         final Calendar cal = Calendar.getInstance();
         cal.set(Calendar.MONTH, d.getMonthValue() - 1);
         cal.set(Calendar.DAY_OF_MONTH, d.getDayOfMonth());
         final int dayOfYear = cal.get(Calendar.DAY_OF_YEAR);
-        return (double) (dayOfYear - 1) / 366.0 * Math.PI * 2;
+        return Quantities.getQuantity((double) (dayOfYear - 1) / 366.0 * Math.PI * 2, RADIAN);
     }
 
     public static class PolarCoordinate {
 
         public final double r;
-        public final double theta;
+        public final double theta; // angle in radians
 
-        public PolarCoordinate(final double r, final double theta) {
+        public PolarCoordinate(final double r, final Quantity<Angle> theta) {
             this.r = r;
-            this.theta = theta;
+            this.theta = theta.to(RADIAN).getValue().doubleValue();
         }
 
         public final Point2D.Double toCartesian() {
