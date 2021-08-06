@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -454,8 +455,9 @@ public class ObservedDeathVisualizer extends JFrame {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
         final Function<String[], String> classifier = (line) -> line[stateColumn];
+        final Supplier<List<String[]>> listSupplier = () -> newArrayList(header); // Every list has the header as the first element.
         final Map<String, List<String[]>> regions = lines.stream().skip(1)
-                .collect(Collectors.groupingBy(classifier, Collectors.toCollection(() -> newArrayList(header))));
+                .collect(Collectors.groupingBy(classifier, Collectors.toCollection(listSupplier)));
         return regions.entrySet().stream();
     }
 
