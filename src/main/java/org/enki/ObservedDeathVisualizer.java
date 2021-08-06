@@ -32,9 +32,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.PI;
 import static org.enki.Statistics.standardDeviation;
 import static tech.units.indriya.unit.Units.RADIAN;
 
@@ -88,12 +90,12 @@ public class ObservedDeathVisualizer extends JFrame {
             final MonthDay d = MonthDay.of(i, 1);
             final Quantity<Angle> theta = monthDayToAngle(d);
             final PolarCoordinate c = new PolarCoordinate(radius, theta);
-            final Point2D p = c.toCartesian();
+            final Point2D p = c.toCartesian(clockwiseRotator);
             g2d.drawLine(0, 0, (int) p.getX(), (int) p.getY());
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
             newXform.translate(p.getX(), p.getY());
-            newXform.rotate(-((i - 1) * (Math.PI * 2 / 12)) + (Math.PI / 2));
+            newXform.rotate(-((i - 1) * (PI * 2 / 12)) + (PI / 2));
             newXform.scale(1, -1);
             g2d.setTransform(newXform);
             final String monthName = d.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
@@ -193,10 +195,10 @@ public class ObservedDeathVisualizer extends JFrame {
         for (int i = 1; i < numPoints; i++) {
             final GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, 2);
             final DataPoint startDataPoint = points.get(i - 1);
-            final Point2D.Double start = toPolar(startDataPoint).toCartesian();
+            final Point2D.Double start = toPolar(startDataPoint).toCartesian(clockwiseRotator);
             polyline.moveTo(start.x, start.y);
             final DataPoint dataPoint = points.get(i);
-            final Point2D.Double p = toPolar(dataPoint).toCartesian();
+            final Point2D.Double p = toPolar(dataPoint).toCartesian(clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
             g2d.setStroke(new BasicStroke(maxCount / 100.0f));
@@ -209,7 +211,7 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static Quantity<Angle> dateToAngle(final LocalDate d) {
-        return Quantities.getQuantity((double) (d.getDayOfYear() - 1) / 366.0 * Math.PI * 2, RADIAN);
+        return Quantities.getQuantity((double) (d.getDayOfYear() - 1) / 366.0 * PI * 2, RADIAN);
     }
 
     private static Quantity<Angle> monthDayToAngle(final MonthDay d) {
@@ -217,8 +219,11 @@ public class ObservedDeathVisualizer extends JFrame {
         cal.set(Calendar.MONTH, d.getMonthValue() - 1);
         cal.set(Calendar.DAY_OF_MONTH, d.getDayOfMonth());
         final int dayOfYear = cal.get(Calendar.DAY_OF_YEAR);
-        return Quantities.getQuantity((double) (dayOfYear - 1) / 366.0 * Math.PI * 2, RADIAN);
+        return Quantities.getQuantity((double) (dayOfYear - 1) / 366.0 * PI * 2, RADIAN);
     }
+
+    // Rotate to clockwise with 0 at 12:00.
+    private static final Function<Double, Double> clockwiseRotator = theta -> -theta + PI / 2;
 
     public static class PolarCoordinate {
 
@@ -231,7 +236,11 @@ public class ObservedDeathVisualizer extends JFrame {
         }
 
         public final Point2D.Double toCartesian() {
-            final double rotatedTheta = -theta + Math.PI / 2; // Rotate to clockwise with 0 at 12:00.
+            return toCartesian(Function.identity());
+        }
+
+        public final Point2D.Double toCartesian(final Function<Double, Double> rotator) {
+            final double rotatedTheta = rotator.apply(theta);
             final double x = r * Math.cos(rotatedTheta);
             final double y = r * Math.sin(rotatedTheta);
             return new Point2D.Double(x, y);
