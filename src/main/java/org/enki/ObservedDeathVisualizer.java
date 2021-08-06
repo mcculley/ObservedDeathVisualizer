@@ -446,7 +446,7 @@ public class ObservedDeathVisualizer extends JFrame {
         return Lists.newArrayList(o);
     }
 
-    public static Map<String, List<String[]>> splitRegions(final List<String[]> lines) {
+    public static Stream<Map.Entry<String, List<String[]>>> splitRegions(final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
         final Map<String, List<String[]>> regions = new HashMap<>();
@@ -455,7 +455,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final List<String[]> list = regions.computeIfAbsent(region, (s) -> newArrayList(header));
             list.add(line);
         });
-        return regions;
+        return regions.entrySet().stream();
     }
 
     private static final Color startColor = new Color(255, 128, 0);
@@ -532,7 +532,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
         final List<String[]> allLines = csvReader.readAll();
         System.out.println("generating graphs");
-        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).entrySet().stream().parallel();
+        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).parallel();
         regionLists.forEach((e) -> {
             final String region = e.getKey();
             final List<String[]> lines = e.getValue();
