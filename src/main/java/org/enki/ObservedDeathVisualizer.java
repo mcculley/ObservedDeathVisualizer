@@ -451,15 +451,10 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    public static Set<String> regions(final List<String[]> lines) {
-        final Set<String> regions = new HashSet<>();
+    public static Stream<String> regions(final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
-        lines.stream().skip(1).forEach((line) -> {
-            regions.add(line[stateColumn]);
-        });
-
-        return regions;
+        return lines.stream().skip(1).map((line) -> line[stateColumn]).distinct();
     }
 
     private static final Color startColor = new Color(255, 128, 0);
@@ -536,8 +531,8 @@ public class ObservedDeathVisualizer extends JFrame {
         final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
         final List<String[]> lines = csvReader.readAll();
         System.out.println("generating graphs");
-        final Set<String> regions = regions(lines);
-        for (final String region : regions) {
+        final Stream<String> regions = regions(lines);
+        regions.forEach((region) -> {
             final DataSet dataSet = parseDataSet(region, lines);
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
             SwingUtilities.invokeLater(() -> app.setVisible(true));
@@ -552,8 +547,12 @@ public class ObservedDeathVisualizer extends JFrame {
 
             app.paint(g);
             final File outputfile = new File((region + ".png").replaceAll("\\s", ""));
-            ImageIO.write(i, "png", outputfile);
-        }
+            try {
+                ImageIO.write(i, "png", outputfile);
+            } catch (final IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
     }
 
