@@ -12,7 +12,14 @@
         </p>
         <img src="UnitedStates.png"/>
         <p>Using this kind of graph one can more easily see how changes year-to-year in total observed deaths have been affected by COVID-19. Using total observed deaths, one can disregard the (mis)attribution of deaths to COVID-19 and more clearly see the failure of federal and state governments.</p>
-        <p>One thing that surprised me when building this was how much reporting lag there is. It apparently takes weeks for states to count death certificates and get them to CDC for distribution. Some states are worse than others. As I write this, North Carolina&apos;s data is months out of date. Even where data is available for recent weeks, it cannot be trusted due to reporting lag. The data for a given week increases as more deaths are added. For this reason, the code eliminates the most recent weeks where they are lower beyond the standard deviation of the weeks prior.</p>
+        <p>
+            One thing that surprised me when building this was how much reporting lag there is. It apparently takes
+            weeks for states to count death certificates and get them to CDC for distribution. Some states are worse
+            than others. As I write this, North Carolina&apos;s data is months out of date. Even where data is available for
+            recent weeks, it cannot be trusted due to reporting lag. The data for a given week increases as more deaths
+            are added. For this reason, the code eliminates the most recent weeks where they are lower beyond the
+            standard deviation of the weeks prior.
+        </p>
         <p>Source code for the tool that generates these graphs is available at
             <a href="https://github.com/mcculley/ObservedDeathVisualizer">https://github.com/mcculley/ObservedDeathVisualizer</a>.
             This was built by
