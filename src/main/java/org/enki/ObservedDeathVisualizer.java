@@ -388,13 +388,12 @@ public class ObservedDeathVisualizer extends JFrame {
         throw new IllegalArgumentException("could not find " + columnName);
     }
 
-    public static DataSet parseDataSet(final String[] header, final String region, final List<String[]> lines) {
+    public static DataSet parseDataSet(final String[] header, final String region, final Stream<String[]> lines) {
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
         final List<DataPoint> list = new ArrayList<>();
-        final Stream<String[]> nonHeaderLines = lines.stream();
-        nonHeaderLines.forEach((line) -> {
+        lines.forEach((line) -> {
             final String type = line[typeColumn];
 
             // Skip rows marked "Predicted". We want only the observed deaths.
@@ -528,7 +527,7 @@ public class ObservedDeathVisualizer extends JFrame {
         regionLists.forEach((e) -> {
             final String region = e.getKey();
             final List<String[]> lines = e.getValue();
-            final DataSet dataSet = parseDataSet(header, region, lines);
+            final DataSet dataSet = parseDataSet(header, region, lines.stream());
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
