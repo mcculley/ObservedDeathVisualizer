@@ -388,19 +388,6 @@ public class ObservedDeathVisualizer extends JFrame {
         throw new IllegalArgumentException("could not find " + columnName);
     }
 
-    public static DataSet parseDataSet(final String[] header, final String region, final Stream<String[]> lines) {
-        final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
-        final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
-
-        final Stream<DataPoint> l = lines.map((line) -> {
-            final String count = line[observedNumberColumn];
-            final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
-            return new DataPoint(date, Integer.parseInt(count));
-        });
-
-        return new DataSet(region, l.collect(Collectors.toList()));
-    }
-
     /**
      * The data we get from CDC is incomplete for the most recent weeks. It apparently takes many weeks for the states
      * to collect death certificates and report them to the CDC. This leads to a graph that looks like things are vastly
@@ -427,10 +414,9 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    private static Stream<Map.Entry<String, List<String[]>>> splitRegions(final String[] header,
-                                                                          final List<String[]> lines) {
+    private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
+                                                                           final List<String[]> lines) {
         final int stateColumn = findHeaderIndex(header, "State");
-        final Function<String[], String> classifier = (line) -> line[stateColumn];
         final int typeColumn = findHeaderIndex(header, "Type");
 
         // Skip rows marked "Predicted". We want only the observed deaths.
@@ -440,9 +426,18 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
 
-        final Map<String, List<String[]>> regions =
+        final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
+
+        final Function<String[], DataPoint> converter = (line) -> {
+            final String count = line[observedNumberColumn];
+            final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
+            return new DataPoint(date, Integer.parseInt(count));
+        };
+
+        final Function<String[], String> classifier = (line) -> line[stateColumn];
+        final Map<String, List<DataPoint>> regions =
                 lines.stream().filter(unweighted).filter(hasCount)
-                        .collect(Collectors.groupingBy(classifier, Collectors.toList()));
+                        .collect(Collectors.groupingBy(classifier, Collectors.mapping(converter, Collectors.toList())));
         return regions.entrySet().stream();
     }
 
@@ -521,11 +516,11 @@ public class ObservedDeathVisualizer extends JFrame {
         final List<String[]> allLines = csvReader.readAll();
         final String[] header = allLines.remove(0);
         System.out.println("generating graphs");
-        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(header, allLines).parallel();
+        final Stream<Map.Entry<String, List<DataPoint>>> regionLists = splitRegions(header, allLines).parallel();
+
         regionLists.forEach((e) -> {
             final String region = e.getKey();
-            final List<String[]> lines = e.getValue();
-            final DataSet dataSet = parseDataSet(header, region, lines.stream());
+            final DataSet dataSet = new DataSet(e.getKey(), e.getValue());
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
