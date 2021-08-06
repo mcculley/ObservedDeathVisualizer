@@ -34,11 +34,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -393,7 +391,6 @@ public class ObservedDeathVisualizer extends JFrame {
     public static DataSet parseDataSet(final String region, final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
-        final int stateColumn = findHeaderIndex(header, "State");
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
         final List<DataPoint> list = new ArrayList<>();
@@ -406,20 +403,13 @@ public class ObservedDeathVisualizer extends JFrame {
                 return;
             }
 
-            final String state = line[stateColumn];
-            if (!state.equals(region)) {
-                return;
-            }
-
-            final String date = line[weekEndingColumn];
             final String count = line[observedNumberColumn];
-            final LocalDate localDate = LocalDate.parse(date);
-            final Duration age = Duration.between(localDate.atStartOfDay(), LocalDate.now().atStartOfDay());
             if (count.length() == 0) {
                 return;
             }
 
-            list.add(new DataPoint(localDate, Integer.parseInt(count)));
+            final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
+            list.add(new DataPoint(date, Integer.parseInt(count)));
         });
 
         return new DataSet(region, list);
@@ -451,10 +441,20 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    public static Stream<String> regions(final List<String[]> lines) {
+    public static Map<String, List<String[]>> splitRegions(final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
-        return lines.stream().skip(1).map((line) -> line[stateColumn]).distinct();
+        final Map<String, List<String[]>> regions = new HashMap<>();
+        lines.stream().skip(1).forEach((line) -> {
+            final String region = line[stateColumn];
+            final List<String[]> list = regions.computeIfAbsent(region, (s) -> {
+                final List<String[]> l = new ArrayList<>();
+                l.add(header);
+                return l;
+            });
+            list.add(line);
+        });
+        return regions;
     }
 
     private static final Color startColor = new Color(255, 128, 0);
@@ -529,10 +529,12 @@ public class ObservedDeathVisualizer extends JFrame {
                 new URL("https://data.cdc.gov/api/views/xkkf-xrst/rows.csv?accessType=DOWNLOAD&bom=true&format=true%20target=");
         System.out.println("reading data from " + data);
         final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
-        final List<String[]> lines = csvReader.readAll();
+        final List<String[]> allLines = csvReader.readAll();
         System.out.println("generating graphs");
-        final Stream<String> regions = regions(lines).parallel();
-        regions.forEach((region) -> {
+        final Stream<Map.Entry<String, List<String[]>>> regionLists = splitRegions(allLines).entrySet().stream();
+        regionLists.forEach((e) -> {
+            final String region = e.getKey();
+            final List<String[]> lines = e.getValue();
             final DataSet dataSet = parseDataSet(region, lines);
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
             SwingUtilities.invokeLater(() -> app.setVisible(true));
@@ -549,8 +551,8 @@ public class ObservedDeathVisualizer extends JFrame {
             final File outputfile = new File((region + ".png").replaceAll("\\s", ""));
             try {
                 ImageIO.write(i, "png", outputfile);
-            } catch (final IOException e) {
-                throw new RuntimeException(e);
+            } catch (final IOException ex) {
+                throw new RuntimeException(ex);
             }
         });
 
