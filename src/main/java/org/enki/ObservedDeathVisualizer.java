@@ -1,5 +1,7 @@
 package org.enki;
 
+import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
@@ -15,11 +17,16 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.NumberFormat;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
@@ -34,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.PI;
@@ -54,6 +62,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private final LocalDate minDate;
     private final LocalDate maxDate;
     private final Duration duration;
+    private final int maxCount;
     private final Map<Integer, Color> yearColors = new HashMap<>();
     private static boolean interpolateColors = false;
     private static boolean interpolateUsingHSB = false;
@@ -62,6 +71,7 @@ public class ObservedDeathVisualizer extends JFrame {
         super(region);
         this.data = data;
         this.region = region;
+        maxCount = maxCount(data);
         minDate = minDate(data);
         maxDate = maxDate(data);
         duration = Duration.between(minDate.atStartOfDay(), maxDate.atStartOfDay());
@@ -108,7 +118,6 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.scale(1, -1);
         drawMonths(g2d, 375);
 
-        final int maxCount = maxCount(data);
         final double scaleConstant = 350;
         final double newScale = scaleConstant / maxCount;
         final double scale = newScale;
@@ -152,17 +161,23 @@ public class ObservedDeathVisualizer extends JFrame {
             g2d.setTransform(current);
         }
 
-        plotData(g2d, data, maxCount);
+        plotData(g2d);
     }
 
     private void drawKey(final Graphics2D g2d) {
+        final int height = 25;
+        g2d.setStroke(new BasicStroke(5));
         for (int year = minDate.getYear(); year <= maxDate.getYear(); year++) {
-            final int y = (year - minDate.getYear()) * 25;
+            final int y = (year - minDate.getYear()) * height;
             final LocalDate firstDayOfYear = LocalDate.of(year, 1, 1);
             final LocalDate firstColorDate = firstDayOfYear.compareTo(minDate) < 0 ? minDate : firstDayOfYear;
             g2d.setColor(getColor(firstColorDate));
             g2d.drawString(Integer.toString(year), 0, y);
-            g2d.setStroke(new BasicStroke(5));
+        }
+
+        if (maxDate.compareTo(incompleteDataDate) >= 0) {
+            g2d.setColor(getColor(LocalDate.now()));
+            g2d.drawString("incomplete data", 0, (maxDate.getYear() - minDate.getYear() + 1) * height);
         }
     }
 
@@ -178,30 +193,54 @@ public class ObservedDeathVisualizer extends JFrame {
         return points.stream().mapToInt((p) -> p.count).max().getAsInt();
     }
 
-    private Color getColor(final LocalDate date) {
-        if (interpolateColors) {
-            if (interpolateUsingHSB) {
-                return interpolateHSB(endColor, startColor, distanceAlongDuration(date));
-            } else {
-                return interpolateRGB(endColor, startColor, distanceAlongDuration(date));
-            }
+    private Stroke getStroke(final LocalDate date) {
+        final float width = maxCount / 100.0f;
+        if (date.compareTo(incompleteDataDate) >= 0) {
+            return new BasicStroke(width, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9},
+                    0);
         } else {
-            return yearColors.get(date.getYear());
+            return new BasicStroke(width);
         }
     }
 
-    private void plotData(final Graphics2D g2d, final List<DataPoint> points, final int maxCount) {
-        final int numPoints = points.size();
+    private static Color setAlpha(final Color c, final float alpha) {
+        int red = c.getRed();
+        int green = c.getGreen();
+        int blue = c.getBlue();
+        return new Color(red, green, blue, (int) (alpha * 255.0));
+    }
+
+    private static LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
+
+    private Color getColor(final LocalDate date) {
+        final float alpha = date.compareTo(incompleteDataDate) > 0 ? 0.2f : 1;
+        final Color base;
+
+        if (interpolateColors) {
+            if (interpolateUsingHSB) {
+                base = interpolateHSB(endColor, startColor, distanceAlongDuration(date));
+            } else {
+                base = interpolateRGB(endColor, startColor, distanceAlongDuration(date));
+            }
+        } else {
+            base = yearColors.get(date.getYear());
+        }
+
+        return setAlpha(base, alpha);
+    }
+
+    private void plotData(final Graphics2D g2d) {
+        final int numPoints = data.size();
         for (int i = 1; i < numPoints; i++) {
             final GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, 2);
-            final DataPoint startDataPoint = points.get(i - 1);
+            final DataPoint startDataPoint = data.get(i - 1);
             final Point2D.Double start = toPolar(startDataPoint).toCartesian(clockwiseRotator);
             polyline.moveTo(start.x, start.y);
-            final DataPoint dataPoint = points.get(i);
+            final DataPoint dataPoint = data.get(i);
             final Point2D.Double p = toPolar(dataPoint).toCartesian(clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            g2d.setStroke(new BasicStroke(maxCount / 100.0f));
+            g2d.setStroke(getStroke(dataPoint.date));
             g2d.draw(polyline);
         }
     }
@@ -307,7 +346,7 @@ public class ObservedDeathVisualizer extends JFrame {
         public final String region;
         public final List<DataPoint> points;
 
-        public DataSet(String region, List<DataPoint> points) {
+        public DataSet(final String region, final List<DataPoint> points) {
             this.region = region;
             this.points = points;
         }
@@ -316,8 +355,7 @@ public class ObservedDeathVisualizer extends JFrame {
         public String toString() {
             return "DataSet{" +
                     "region='" + region + '\'' +
-                    ", points=" + points +
-                    '}';
+                    ", points=" + points + '}';
         }
 
     }
@@ -359,33 +397,32 @@ public class ObservedDeathVisualizer extends JFrame {
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
         final List<DataPoint> list = new ArrayList<>();
-        for (int i = 1; i < lines.size(); i++) {
-            final String[] line = lines.get(i);
+        final Stream<String[]> nonHeaderLines = lines.stream().skip(1);
+        nonHeaderLines.forEach((line) -> {
             final String type = line[typeColumn];
 
             // Skip rows marked "Predicted". We want only the observed deaths.
             if (type.startsWith("Predicted")) {
-                continue;
+                return;
             }
 
             final String state = line[stateColumn];
             if (!state.equals(region)) {
-                continue;
+                return;
             }
 
             final String date = line[weekEndingColumn];
             final String count = line[observedNumberColumn];
             final LocalDate localDate = LocalDate.parse(date);
             final Duration age = Duration.between(localDate.atStartOfDay(), LocalDate.now().atStartOfDay());
-
             if (count.length() == 0) {
-                continue;
+                return;
             }
 
             list.add(new DataPoint(localDate, Integer.parseInt(count)));
-        }
+        });
 
-        return new DataSet(region, trimReportingLag(list));
+        return new DataSet(region, list);
     }
 
     /**
@@ -418,11 +455,9 @@ public class ObservedDeathVisualizer extends JFrame {
         final Set<String> regions = new HashSet<>();
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
-        for (int i = 1; i < lines.size(); i++) {
-            final String[] line = lines.get(i);
-            final String state = line[stateColumn];
-            regions.add(state);
-        }
+        lines.stream().skip(1).forEach((line) -> {
+            regions.add(line[stateColumn]);
+        });
 
         return regions;
     }
@@ -457,11 +492,48 @@ public class ObservedDeathVisualizer extends JFrame {
         return Color.getHSBColor(h, s, b);
     }
 
+    private static String makeFileName(final URL l) {
+        final String s = l.toString();
+        final StringBuilder buf = new StringBuilder();
+        for (final char c : s.toCharArray()) {
+            if (c == '/') {
+                buf.append('-');
+            } else {
+                buf.append(c);
+            }
+        }
+
+        return buf.toString();
+    }
+
+    private static InputStream openCachedURL(final URL l) throws IOException {
+        final File tmpDir = new File(System.getProperty("java.io.tmpdir"));
+        final File cachedFile = new File(tmpDir, makeFileName(l));
+        System.err.println("cachedFile=" + cachedFile);
+        if (cachedFile.exists()) {
+            final BasicFileAttributes attr = Files.readAttributes(cachedFile.toPath(), BasicFileAttributes.class);
+            final Duration age = Duration.between(attr.lastModifiedTime().toInstant(), Instant.now());
+            if (age.compareTo(Duration.ofDays(1)) < 0) {
+                System.err.println("using cached file");
+                return new FileInputStream(cachedFile);
+            } else {
+                System.err.println("cached file is expired. age=" + age);
+                cachedFile.delete();
+            }
+        }
+
+        System.err.println("fetching " + l);
+        final InputStream is = l.openStream();
+        final byte[] targetArray = ByteStreams.toByteArray(is);
+        Files.write(cachedFile.toPath(), targetArray);
+        return ByteSource.wrap(targetArray).openStream();
+    }
+
     public static void main(final String[] args) throws IOException, CsvException {
         final URL data =
                 new URL("https://data.cdc.gov/api/views/xkkf-xrst/rows.csv?accessType=DOWNLOAD&bom=true&format=true%20target=");
         System.out.println("reading data from " + data);
-        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(data.openStream())).build();
+        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
         final List<String[]> lines = csvReader.readAll();
         System.out.println("generating graphs");
         final Set<String> regions = regions(lines);
@@ -482,6 +554,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final File outputfile = new File((region + ".png").replaceAll("\\s", ""));
             ImageIO.write(i, "png", outputfile);
         }
+
     }
 
 }
