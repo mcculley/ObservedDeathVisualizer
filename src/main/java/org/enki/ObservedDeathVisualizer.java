@@ -1,5 +1,6 @@
 package org.enki;
 
+import com.google.common.collect.Lists;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
@@ -442,9 +443,7 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static <T> List<T> newArrayList(final T o) {
-        final List<T> l = new ArrayList<>();
-        l.add(o);
-        return l;
+        return Lists.newArrayList(o);
     }
 
     public static Map<String, List<String[]>> splitRegions(final List<String[]> lines) {
