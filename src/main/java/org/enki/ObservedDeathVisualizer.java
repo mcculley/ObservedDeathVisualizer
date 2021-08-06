@@ -212,7 +212,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private static LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
 
     private Color getColor(final LocalDate date) {
-        final float alpha = date.compareTo(incompleteDataDate) > 0 ? 0.2f : 1;
+        final float alpha = date.compareTo(incompleteDataDate) > 0 ? 0.3f : 1;
         final Color base;
 
         if (interpolateColors) {
