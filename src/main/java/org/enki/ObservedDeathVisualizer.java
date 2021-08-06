@@ -441,17 +441,19 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
+    private static <T> List<T> newArrayList(final T o) {
+        final List<T> l = new ArrayList<>();
+        l.add(o);
+        return l;
+    }
+
     public static Map<String, List<String[]>> splitRegions(final List<String[]> lines) {
         final String[] header = lines.get(0);
         final int stateColumn = findHeaderIndex(header, "State");
         final Map<String, List<String[]>> regions = new HashMap<>();
         lines.stream().skip(1).forEach((line) -> {
             final String region = line[stateColumn];
-            final List<String[]> list = regions.computeIfAbsent(region, (s) -> {
-                final List<String[]> l = new ArrayList<>();
-                l.add(header);
-                return l;
-            });
+            final List<String[]> list = regions.computeIfAbsent(region, (s) -> newArrayList(header));
             list.add(line);
         });
         return regions;
