@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -393,14 +394,11 @@ public class ObservedDeathVisualizer extends JFrame {
         final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
         final int typeColumn = findHeaderIndex(header, "Type");
         final List<DataPoint> list = new ArrayList<>();
-        lines.forEach((line) -> {
-            final String type = line[typeColumn];
 
-            // Skip rows marked "Predicted". We want only the observed deaths.
-            if (type.startsWith("Predicted")) {
-                return;
-            }
+        // Skip rows marked "Predicted". We want only the observed deaths.
+        final Predicate<String[]> unweighted = (line) -> !line[typeColumn].startsWith("Predicted");
 
+        lines.filter(unweighted).forEach((line) -> {
             final String count = line[observedNumberColumn];
             if (count.length() == 0) {
                 return;
