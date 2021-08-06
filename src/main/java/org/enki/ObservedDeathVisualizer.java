@@ -175,6 +175,7 @@ public class ObservedDeathVisualizer extends JFrame {
         }
 
         if (maxDate.compareTo(incompleteDataDate) >= 0) {
+            g2d.setStroke(getStroke(maxDate, 5));
             g2d.setColor(getColor(LocalDate.now()));
             g2d.drawString("incomplete data", 0, (maxDate.getYear() - minDate.getYear() + 1) * height);
         }
@@ -192,8 +193,7 @@ public class ObservedDeathVisualizer extends JFrame {
         return points.stream().mapToInt((p) -> p.count).max().getAsInt();
     }
 
-    private Stroke getStroke(final LocalDate date) {
-        final float width = maxCount / 100.0f;
+    private Stroke getStroke(final LocalDate date, final float width) {
         if (date.compareTo(incompleteDataDate) >= 0) {
             return new BasicStroke(width, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9},
                     0);
@@ -239,7 +239,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Point2D.Double p = toPolar(dataPoint).toCartesian(clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            g2d.setStroke(getStroke(dataPoint.date));
+            g2d.setStroke(getStroke(dataPoint.date, maxCount / 100.0f));
             g2d.draw(polyline);
         }
     }
