@@ -1,11 +1,10 @@
 package org.enki.odv;
 
-import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import org.enki.CSVParser;
+import org.enki.CacheUtilities;
 import org.enki.PolarCoordinate;
 import tech.units.indriya.quantity.Quantities;
 
@@ -19,16 +18,11 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.text.NumberFormat;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
@@ -414,48 +408,11 @@ public class ObservedDeathVisualizer extends JFrame {
         return Color.getHSBColor(h, s, b);
     }
 
-    private static String makeFileName(final URL l) {
-        final String s = l.toString();
-        final StringBuilder buf = new StringBuilder();
-        for (final char c : s.toCharArray()) {
-            if (c == '/') {
-                buf.append('-');
-            } else {
-                buf.append(c);
-            }
-        }
-
-        return buf.toString();
-    }
-
-    private static InputStream openCachedURL(final URL l) throws IOException {
-        final File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-        final File cachedFile = new File(tmpDir, makeFileName(l));
-        System.err.println("cachedFile=" + cachedFile);
-        if (cachedFile.exists()) {
-            final BasicFileAttributes attr = Files.readAttributes(cachedFile.toPath(), BasicFileAttributes.class);
-            final Duration age = Duration.between(attr.lastModifiedTime().toInstant(), Instant.now());
-            if (age.compareTo(Duration.ofDays(1)) < 0) {
-                System.err.println("using cached file");
-                return new FileInputStream(cachedFile);
-            } else {
-                System.err.println("cached file is expired. age=" + age);
-                cachedFile.delete();
-            }
-        }
-
-        System.err.println("fetching " + l);
-        final InputStream is = l.openStream();
-        final byte[] targetArray = ByteStreams.toByteArray(is);
-        Files.write(cachedFile.toPath(), targetArray);
-        return ByteSource.wrap(targetArray).openStream();
-    }
-
     public static void main(final String[] args) throws IOException, CsvException {
         final URL data =
                 new URL("https://data.cdc.gov/api/views/xkkf-xrst/rows.csv?accessType=DOWNLOAD&bom=true&format=true%20target=");
         System.out.println("reading data from " + data);
-        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(openCachedURL(data))).build();
+        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(CacheUtilities.openCachedURL(data))).build();
         final List<String[]> allLines = csvReader.readAll();
         final String[] header = allLines.remove(0);
         System.out.println("generating graphs");
