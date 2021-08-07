@@ -415,10 +415,10 @@ public class ObservedDeathVisualizer extends JFrame {
             return new DataPoint(date, Integer.parseInt(count));
         };
 
-        final Function<String[], String> classifier = (line) -> line[stateColumn];
+        final Function<String[], String> regionClassifier = (line) -> line[stateColumn];
         final Map<String, List<DataPoint>> regions =
                 lines.stream().filter(unweighted).filter(hasCount)
-                        .collect(Collectors.groupingBy(classifier,
+                        .collect(Collectors.groupingBy(regionClassifier,
                                 Collectors.mapping(linetoDataPoint, Collectors.toList())));
         return regions.entrySet().stream();
     }
