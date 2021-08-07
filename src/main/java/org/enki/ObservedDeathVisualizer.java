@@ -561,8 +561,13 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        final CSVParser<DataLine> p = new CSVParser.Builder<>(DataLine.class, header).withColumnParsers(
-                Map.of("Observed Number", (s) -> s.isEmpty() ? 0 : Integer.parseInt(s))).build();
+        // Special parsing for the "Observed Number" column: It sometimes contains empty strings. Set those to 0 and
+        // filter them out.
+        final Map<String, Function<String, Object>> columnParsers =
+                Map.of("Observed Number", (s) -> s.isEmpty() ? 0 : Integer.parseInt(s));
+
+        final CSVParser<DataLine> p =
+                new CSVParser.Builder<>(DataLine.class, header).withColumnParsers(columnParsers).build();
         final Function<String[], DataLine> parser = (line) -> p.parse(line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
