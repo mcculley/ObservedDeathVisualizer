@@ -38,9 +38,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.PI;
-import static org.enki.Statistics.standardDeviation;
 import static tech.units.indriya.unit.Units.RADIAN;
 
 /**
@@ -286,32 +284,6 @@ public class ObservedDeathVisualizer extends JFrame {
                     '}';
         }
 
-    }
-
-    /**
-     * The data we get from CDC is incomplete for the most recent weeks. It apparently takes many weeks for the states
-     * to collect death certificates and report them to the CDC. This leads to a graph that looks like things are vastly
-     * improved for the most recent weeks, which is misleading. This function trims data which is more than one standard
-     * deviation below the previous ten points.
-     *
-     * @param points a List of DataPoint objects
-     * @return a potentially trimmed list of data points
-     */
-    private static List<DataPoint> trimReportingLag(final List<DataPoint> points) {
-        final int lastPoint = points.get(points.size() - 1).count;
-        final int nextToLastPoint = points.get(points.size() - 2).count;
-        final int numPreviousPoints = 10;
-        final List<Integer> previousPoints =
-                points.subList(points.size() - (numPreviousPoints + 1), points.size() - 1).stream().map((p) -> p.count)
-                        .collect(
-                                Collectors.toList());
-        final double σ = standardDeviation(previousPoints);
-        final double deviation = lastPoint - nextToLastPoint;
-        if (deviation < 0 && abs(deviation) > σ) {
-            return trimReportingLag(points.subList(0, points.size() - 2));
-        } else {
-            return points;
-        }
     }
 
     public static class DataLine {
