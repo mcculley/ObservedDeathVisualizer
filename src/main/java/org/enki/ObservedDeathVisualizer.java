@@ -339,25 +339,6 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    public static class DataSet {
-
-        public final String region;
-        public final List<DataPoint> points;
-
-        public DataSet(final String region, final List<DataPoint> points) {
-            this.region = region;
-            this.points = points;
-        }
-
-        @Override
-        public String toString() {
-            return "DataSet{" +
-                    "region='" + region + '\'' +
-                    ", points=" + points + '}';
-        }
-
-    }
-
     private static String normalize(final String s) {
         // get rid of UTF-8 noise
         final int length = s.length();
@@ -520,8 +501,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         regionLists.forEach((e) -> {
             final String region = e.getKey();
-            final DataSet dataSet = new DataSet(e.getKey(), e.getValue());
-            final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, dataSet.points);
+            final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, e.getValue());
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
             final BufferedImage i = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
