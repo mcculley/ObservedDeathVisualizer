@@ -279,7 +279,7 @@ public class ObservedDeathVisualizer extends JFrame {
         /**
          * Create new PolarCoordinate.
          *
-         * @param r the radius of the point
+         * @param r     the radius of the point
          * @param theta the angle of the point
          */
         public PolarCoordinate(final double r, final Quantity<Angle> theta) {
@@ -407,14 +407,6 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
-    public @interface CSVHeaderMapping {
-
-        String column();
-
-    }
-
     public static class DataLine {
 
         public final String state;
@@ -422,10 +414,10 @@ public class ObservedDeathVisualizer extends JFrame {
         public final int observedNumber;
         public final LocalDate weekEndingDate;
 
-        public DataLine(@CSVHeaderMapping(column = "State") final String state,
-                        @CSVHeaderMapping(column = "Type") final String type,
-                        @CSVHeaderMapping(column = "Observed Number") final int observedNumber,
-                        @CSVHeaderMapping(column = "Week Ending Date") final LocalDate weekEndingDate) {
+        public DataLine(@CSVParser.CSVHeaderMapping(column = "State") final String state,
+                        @CSVParser.CSVHeaderMapping(column = "Type") final String type,
+                        @CSVParser.CSVHeaderMapping(column = "Observed Number") final int observedNumber,
+                        @CSVParser.CSVHeaderMapping(column = "Week Ending Date") final LocalDate weekEndingDate) {
             this.state = state;
             this.type = type;
             this.observedNumber = observedNumber;
@@ -434,62 +426,86 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static CSVHeaderMapping findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
-        for (final Annotation a : annotations) {
-            if (a instanceof CSVHeaderMapping) {
-                return (CSVHeaderMapping) a;
+    public static class CSVParser<T> {
+
+        @Retention(RetentionPolicy.RUNTIME)
+        @Target(ElementType.PARAMETER)
+        public @interface CSVHeaderMapping {
+
+            String column();
+
+        }
+
+        private final Class<T> c;
+        private final Constructor constructor;
+        private final Map<String, Integer> headerIndices;
+        private final CSVHeaderMapping[] mappings;
+        private final Class<?>[] parameterTypes;
+
+        public CSVParser(final Class<T> c, final Map<String, Integer> headerIndices) {
+            this.c = c;
+            this.headerIndices = headerIndices;
+            constructor = c.getConstructors()[0];
+            mappings = mappings(c);
+            parameterTypes = constructor.getParameterTypes();
+        }
+
+        private static CSVHeaderMapping findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
+            for (final Annotation a : annotations) {
+                if (a instanceof CSVHeaderMapping) {
+                    return (CSVHeaderMapping) a;
+                }
+            }
+
+            throw new AssertionError("expected a mapping annotation to be present");
+        }
+
+        private static CSVHeaderMapping[] mappings(final Class c) {
+            final Constructor constructor = c.getConstructors()[0];
+            final Annotation[][] a = constructor.getParameterAnnotations();
+            final CSVHeaderMapping[] mappings = new CSVHeaderMapping[a.length];
+            final ImmutableList.Builder<CSVHeaderMapping> builder = new ImmutableList.Builder<>();
+            for (int i = 0; i < a.length; i++) {
+                mappings[i] = findCSVHeaderMappingAnnotation(a[i]);
+            }
+
+            return mappings;
+        }
+
+        private T parse(final String[] line) {
+            final Object[] arguments = new Object[parameterTypes.length];
+            final List<String> valueStrings = new ArrayList<>();
+            for (int i = 0; i < mappings.length; i++) {
+                final CSVHeaderMapping mapping = mappings[i];
+                final String s = line[headerIndices.get(mapping.column())];
+                final Class<?> pType = parameterTypes[i];
+                if (pType.equals(String.class)) {
+                    arguments[i] = s;
+                } else if (pType.equals(int.class)) {
+                    arguments[i] = s.isEmpty() ? 0 : Integer.parseInt(s);
+                } else if (pType.equals(LocalDate.class)) {
+                    arguments[i] = LocalDate.parse(s);
+                } else {
+                    throw new AssertionError("do not know how to map String to " + pType);
+                }
+
+                valueStrings.add(line[headerIndices.get(mapping.column())]);
+            }
+
+            try {
+                return c.cast(constructor.newInstance(arguments));
+            } catch (final Exception e) {
+                throw new AssertionError(e);
             }
         }
 
-        throw new AssertionError("expected a mapping annotation to be present");
-    }
-
-    private static CSVHeaderMapping[] mappings(final Class c) {
-        final Constructor constructor = c.getConstructors()[0];
-        final Annotation[][] a = constructor.getParameterAnnotations();
-        final CSVHeaderMapping[] mappings = new CSVHeaderMapping[a.length];
-        final ImmutableList.Builder<CSVHeaderMapping> builder = new ImmutableList.Builder<>();
-        for (int i = 0; i < a.length; i++) {
-            mappings[i] = findCSVHeaderMappingAnnotation(a[i]);
-        }
-
-        return mappings;
-    }
-
-    private static <T> T parse(final Class<T> t, final Map<String, Integer> header, final String[] line) {
-        final Constructor constructor = t.getConstructors()[0];
-        final Class<?>[] parameterTypes = constructor.getParameterTypes();
-        final Object[] arguments = new Object[parameterTypes.length];
-        final CSVHeaderMapping[] mappings = mappings(t);
-        final List<String> valueStrings = new ArrayList<>();
-        for (int i = 0; i < mappings.length; i++) {
-            final CSVHeaderMapping mapping = mappings[i];
-            final String s = line[header.get(mapping.column())];
-            final Class<?> pType = parameterTypes[i];
-            if (pType.equals(String.class)) {
-                arguments[i] = s;
-            } else if (pType.equals(int.class)) {
-                arguments[i] = s.isEmpty() ? 0 : Integer.parseInt(s);
-            } else if (pType.equals(LocalDate.class)) {
-                arguments[i] = LocalDate.parse(s);
-            } else {
-                throw new AssertionError("do not know how to map String to " + pType);
-            }
-
-            valueStrings.add(line[header.get(mapping.column())]);
-        }
-
-        try {
-            return t.cast(constructor.newInstance(arguments));
-        } catch (final Exception e) {
-            throw new AssertionError(e);
-        }
     }
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
         final Map<String, Integer> headerIndices = parseHeader(header);
-        final Function<String[], DataLine> parser = (line) -> parse(DataLine.class, headerIndices, line);
+        final CSVParser<DataLine> p = new CSVParser<>(DataLine.class, headerIndices);
+        final Function<String[], DataLine> parser = (line) -> p.parse(line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<DataLine> unweighted = (line) -> !line.type.startsWith("Predicted");
