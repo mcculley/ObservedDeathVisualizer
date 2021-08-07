@@ -409,7 +409,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
 
-        final Function<String[], DataPoint> converter = (line) -> {
+        final Function<String[], DataPoint> linetoDataPoint = (line) -> {
             final String count = line[observedNumberColumn];
             final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
             return new DataPoint(date, Integer.parseInt(count));
@@ -418,7 +418,8 @@ public class ObservedDeathVisualizer extends JFrame {
         final Function<String[], String> classifier = (line) -> line[stateColumn];
         final Map<String, List<DataPoint>> regions =
                 lines.stream().filter(unweighted).filter(hasCount)
-                        .collect(Collectors.groupingBy(classifier, Collectors.mapping(converter, Collectors.toList())));
+                        .collect(Collectors.groupingBy(classifier,
+                                Collectors.mapping(linetoDataPoint, Collectors.toList())));
         return regions.entrySet().stream();
     }
 
