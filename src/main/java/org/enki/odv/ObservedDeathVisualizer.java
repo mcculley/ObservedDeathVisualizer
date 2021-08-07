@@ -5,6 +5,7 @@ import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import org.enki.CSVParser;
 import org.enki.CacheUtilities;
+import org.enki.ColorUtilities;
 import org.enki.PolarCoordinate;
 import tech.units.indriya.quantity.Quantities;
 
@@ -58,8 +59,6 @@ public class ObservedDeathVisualizer extends JFrame {
     private final Duration duration;
     private final int maxCount;
     private final Map<Integer, Color> yearColors = new HashMap<>();
-    private static boolean interpolateColors = false;
-    private static boolean interpolateUsingHSB = false;
 
     public ObservedDeathVisualizer(final String region, final List<DataPoint> data) {
         super(region);
@@ -197,30 +196,12 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    private static Color setAlpha(final Color c, final float alpha) {
-        int red = c.getRed();
-        int green = c.getGreen();
-        int blue = c.getBlue();
-        return new Color(red, green, blue, (int) (alpha * 255.0));
-    }
-
     private static LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
 
     private Color getColor(final LocalDate date) {
         final float alpha = date.compareTo(incompleteDataDate) >= 0 ? 0.3f : 1;
-        final Color base;
-
-        if (interpolateColors) {
-            if (interpolateUsingHSB) {
-                base = interpolateHSB(endColor, startColor, distanceAlongDuration(date));
-            } else {
-                base = interpolateRGB(endColor, startColor, distanceAlongDuration(date));
-            }
-        } else {
-            base = yearColors.get(date.getYear());
-        }
-
-        return setAlpha(base, alpha);
+        final Color base = yearColors.get(date.getYear());
+        return ColorUtilities.setAlpha(base, alpha);
     }
 
     private void plotData(final Graphics2D g2d) {
@@ -376,36 +357,6 @@ public class ObservedDeathVisualizer extends JFrame {
                         .collect(Collectors.groupingBy(regionClassifier,
                                 Collectors.mapping(lineToDataPoint, Collectors.toList())));
         return regions.entrySet().stream();
-    }
-
-    private static final Color startColor = new Color(255, 128, 0);
-    private static final Color endColor = new Color(0, 0, 255);
-
-    public static Color interpolateRGB(final Color endColor, final Color startColor, final double t) {
-        if (t < 0 || t > 1) {
-            throw new IllegalArgumentException();
-        }
-
-        final float inverse = 1.0f - (float) t;
-        final int r = (int) (endColor.getRed() * t + startColor.getRed() * inverse);
-        final int g = (int) (endColor.getGreen() * t + startColor.getGreen() * inverse);
-        final int b = (int) (endColor.getBlue() * t + startColor.getBlue() * inverse);
-        return new Color(r, g, b);
-    }
-
-    public static Color interpolateHSB(final Color endColor, final Color startColor, final double t) {
-        if (t < 0 || t > 1) {
-            throw new IllegalArgumentException();
-        }
-
-        final float[] startHSB = Color.RGBtoHSB(startColor.getRed(), startColor.getGreen(), startColor.getBlue(), null);
-        final float[] endHSB = Color.RGBtoHSB(endColor.getRed(), endColor.getGreen(), endColor.getBlue(), null);
-
-        final float inverse = 1.0f - (float) t;
-        final float h = endHSB[0] * (float) t + startHSB[0] * inverse;
-        final float s = endHSB[1] * (float) t + startHSB[1] * inverse;
-        final float b = endHSB[2] * (float) t + startHSB[2] * inverse;
-        return Color.getHSBColor(h, s, b);
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
