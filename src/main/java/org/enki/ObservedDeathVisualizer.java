@@ -1,5 +1,6 @@
 package org.enki;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
@@ -355,20 +356,6 @@ public class ObservedDeathVisualizer extends JFrame {
         return buf.toString().strip();
     }
 
-    private static int findHeaderIndex(final String[] header, final String columnName) {
-        int index = 0;
-        for (final String s : header) {
-            final String normalized = normalize(s);
-            if (normalized.equals(columnName)) {
-                return index;
-            }
-
-            index++;
-        }
-
-        throw new IllegalArgumentException("could not find " + columnName);
-    }
-
     /**
      * The data we get from CDC is incomplete for the most recent weeks. It apparently takes many weeks for the states
      * to collect death certificates and report them to the CDC. This leads to a graph that looks like things are vastly
@@ -397,17 +384,18 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        final int stateColumn = findHeaderIndex(header, "State");
-        final int typeColumn = findHeaderIndex(header, "Type");
+        final Map<String, Integer> headerIndices = parseHeader(header);
+        final int stateColumn = headerIndices.get("State");
+        final int typeColumn = headerIndices.get("Type");
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<String[]> unweighted = (line) -> !line[typeColumn].startsWith("Predicted");
 
-        final int observedNumberColumn = findHeaderIndex(header, "Observed Number");
+        final int observedNumberColumn = headerIndices.get("Observed Number");
 
         final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
 
-        final int weekEndingColumn = findHeaderIndex(header, "Week Ending Date");
+        final int weekEndingColumn = headerIndices.get("Week Ending Date");
 
         final Function<String[], DataPoint> linetoDataPoint = (line) -> {
             final String count = line[observedNumberColumn];
@@ -488,6 +476,16 @@ public class ObservedDeathVisualizer extends JFrame {
         final byte[] targetArray = ByteStreams.toByteArray(is);
         Files.write(cachedFile.toPath(), targetArray);
         return ByteSource.wrap(targetArray).openStream();
+    }
+
+    private static Map<String, Integer> parseHeader(final String[] header) {
+        final ImmutableMap.Builder<String, Integer> b = new ImmutableMap.Builder<>();
+        final int length = header.length;
+        for (int i = 0; i < length; i++) {
+            b.put(normalize(header[i]), i);
+        }
+
+        return b.build();
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
