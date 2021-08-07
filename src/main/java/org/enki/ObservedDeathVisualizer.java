@@ -212,7 +212,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private static LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
 
     private Color getColor(final LocalDate date) {
-        final float alpha = date.compareTo(incompleteDataDate) > 0 ? 0.3f : 1;
+        final float alpha = date.compareTo(incompleteDataDate) >= 0 ? 0.3f : 1;
         final Color base;
 
         if (interpolateColors) {
@@ -382,30 +382,48 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
+    public static class DataLine {
+
+        public final String state;
+        public final String type;
+        public final int observedNumber;
+        public final LocalDate weekEndingDate;
+
+        public DataLine(final String state, final String type, final int observedNumber,
+                        final LocalDate weekEndingDate) {
+            this.state = state;
+            this.type = type;
+            this.observedNumber = observedNumber;
+            this.weekEndingDate = weekEndingDate;
+        }
+
+    }
+
+    private static DataLine parse(final Map<String, Integer> header, final String[] line) {
+        final String state = line[header.get("State")];
+        final String type = line[header.get("Type")];
+        final String observedNumberString = line[header.get("Observed Number")];
+        final int observedNumber = observedNumberString.isEmpty() ? -1 : Integer.parseInt(observedNumberString);
+        final LocalDate weekEndingDate = LocalDate.parse(line[header.get("Week Ending Date")]);
+        return new DataLine(state, type, observedNumber, weekEndingDate);
+    }
+
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
         final Map<String, Integer> headerIndices = parseHeader(header);
-        final int stateColumn = headerIndices.get("State");
-        final int typeColumn = headerIndices.get("Type");
+        final Function<String[], DataLine> parser = (line) -> parse(headerIndices, line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
-        final Predicate<String[]> unweighted = (line) -> !line[typeColumn].startsWith("Predicted");
+        final Predicate<DataLine> unweighted = (line) -> !line.type.startsWith("Predicted");
 
-        final int observedNumberColumn = headerIndices.get("Observed Number");
+        final Predicate<DataLine> hasCount = (line) -> line.observedNumber > 0;
 
-        final Predicate<String[]> hasCount = (line) -> !line[observedNumberColumn].isEmpty();
+        final Function<DataLine, DataPoint> linetoDataPoint =
+                (line) -> new DataPoint(line.weekEndingDate, line.observedNumber);
 
-        final int weekEndingColumn = headerIndices.get("Week Ending Date");
-
-        final Function<String[], DataPoint> linetoDataPoint = (line) -> {
-            final String count = line[observedNumberColumn];
-            final LocalDate date = LocalDate.parse(line[weekEndingColumn]);
-            return new DataPoint(date, Integer.parseInt(count));
-        };
-
-        final Function<String[], String> regionClassifier = (line) -> line[stateColumn];
+        final Function<DataLine, String> regionClassifier = (line) -> line.state;
         final Map<String, List<DataPoint>> regions =
-                lines.stream().filter(unweighted).filter(hasCount)
+                lines.stream().map(parser).filter(unweighted).filter(hasCount)
                         .collect(Collectors.groupingBy(regionClassifier,
                                 Collectors.mapping(linetoDataPoint, Collectors.toList())));
         return regions.entrySet().stream();
