@@ -414,10 +414,10 @@ public class ObservedDeathVisualizer extends JFrame {
         public final int observedNumber;
         public final LocalDate weekEndingDate;
 
-        public DataLine(@CSVParser.CSVHeaderMapping(column = "State") final String state,
-                        @CSVParser.CSVHeaderMapping(column = "Type") final String type,
-                        @CSVParser.CSVHeaderMapping(column = "Observed Number") final int observedNumber,
-                        @CSVParser.CSVHeaderMapping(column = "Week Ending Date") final LocalDate weekEndingDate) {
+        public DataLine(@CSVParser.Column(name = "State") final String state,
+                        @CSVParser.Column(name = "Type") final String type,
+                        @CSVParser.Column(name = "Observed Number") final int observedNumber,
+                        @CSVParser.Column(name = "Week Ending Date") final LocalDate weekEndingDate) {
             this.state = state;
             this.type = type;
             this.observedNumber = observedNumber;
@@ -430,16 +430,16 @@ public class ObservedDeathVisualizer extends JFrame {
 
         @Retention(RetentionPolicy.RUNTIME)
         @Target(ElementType.PARAMETER)
-        public @interface CSVHeaderMapping {
+        public @interface Column {
 
-            String column();
+            String name();
 
         }
 
         private final Class<T> c;
         private final Constructor constructor;
         private final Map<String, Integer> headerIndices;
-        private final CSVHeaderMapping[] mappings;
+        private final Column[] mappings;
         private final Class<?>[] parameterTypes;
 
         public CSVParser(final Class<T> c, final String[] header) {
@@ -450,21 +450,21 @@ public class ObservedDeathVisualizer extends JFrame {
             parameterTypes = constructor.getParameterTypes();
         }
 
-        private static CSVHeaderMapping findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
+        private static Column findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
             for (final Annotation a : annotations) {
-                if (a instanceof CSVHeaderMapping) {
-                    return (CSVHeaderMapping) a;
+                if (a instanceof CSVParser.Column) {
+                    return (Column) a;
                 }
             }
 
             throw new AssertionError("expected a mapping annotation to be present");
         }
 
-        private static CSVHeaderMapping[] mappings(final Class c) {
+        private static Column[] mappings(final Class c) {
             final Constructor constructor = c.getConstructors()[0];
             final Annotation[][] a = constructor.getParameterAnnotations();
-            final CSVHeaderMapping[] mappings = new CSVHeaderMapping[a.length];
-            final ImmutableList.Builder<CSVHeaderMapping> builder = new ImmutableList.Builder<>();
+            final Column[] mappings = new Column[a.length];
+            final ImmutableList.Builder<Column> builder = new ImmutableList.Builder<>();
             for (int i = 0; i < a.length; i++) {
                 mappings[i] = findCSVHeaderMappingAnnotation(a[i]);
             }
@@ -486,8 +486,8 @@ public class ObservedDeathVisualizer extends JFrame {
             final Object[] arguments = new Object[parameterTypes.length];
             final List<String> valueStrings = new ArrayList<>();
             for (int i = 0; i < mappings.length; i++) {
-                final CSVHeaderMapping mapping = mappings[i];
-                final String s = line[headerIndices.get(mapping.column())];
+                final Column mapping = mappings[i];
+                final String s = line[headerIndices.get(mapping.name())];
                 final Class<?> pType = parameterTypes[i];
                 if (pType.equals(String.class)) {
                     arguments[i] = s;
@@ -499,7 +499,7 @@ public class ObservedDeathVisualizer extends JFrame {
                     throw new AssertionError("do not know how to map String to " + pType);
                 }
 
-                valueStrings.add(line[headerIndices.get(mapping.column())]);
+                valueStrings.add(line[headerIndices.get(mapping.name())]);
             }
 
             try {
