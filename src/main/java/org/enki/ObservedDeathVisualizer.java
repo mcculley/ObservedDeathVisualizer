@@ -1,5 +1,6 @@
 package org.enki;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
@@ -22,6 +23,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -31,6 +38,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -382,6 +390,14 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    public @interface CSVHeaderMapping {
+
+        String column();
+
+    }
+
     public static class DataLine {
 
         public final String state;
@@ -389,8 +405,10 @@ public class ObservedDeathVisualizer extends JFrame {
         public final int observedNumber;
         public final LocalDate weekEndingDate;
 
-        public DataLine(final String state, final String type, final int observedNumber,
-                        final LocalDate weekEndingDate) {
+        public DataLine(@CSVHeaderMapping(column = "State") final String state,
+                        @CSVHeaderMapping(column = "Type") final String type,
+                        @CSVHeaderMapping(column = "Observed Number") final int observedNumber,
+                        @CSVHeaderMapping(column = "Week Ending Date") final LocalDate weekEndingDate) {
             this.state = state;
             this.type = type;
             this.observedNumber = observedNumber;
@@ -399,19 +417,62 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static DataLine parse(final Map<String, Integer> header, final String[] line) {
-        final String state = line[header.get("State")];
-        final String type = line[header.get("Type")];
-        final String observedNumberString = line[header.get("Observed Number")];
-        final int observedNumber = observedNumberString.isEmpty() ? -1 : Integer.parseInt(observedNumberString);
-        final LocalDate weekEndingDate = LocalDate.parse(line[header.get("Week Ending Date")]);
-        return new DataLine(state, type, observedNumber, weekEndingDate);
+    private static CSVHeaderMapping findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
+        for (final Annotation a : annotations) {
+            if (a instanceof CSVHeaderMapping) {
+                return (CSVHeaderMapping) a;
+            }
+        }
+
+        throw new AssertionError("expected a mapping annotation to be present");
+    }
+
+    private static CSVHeaderMapping[] mappings(final Class c) {
+        final Constructor constructor = c.getConstructors()[0];
+        final Annotation[][] a = constructor.getParameterAnnotations();
+        final CSVHeaderMapping[] mappings = new CSVHeaderMapping[a.length];
+        final ImmutableList.Builder<CSVHeaderMapping> builder = new ImmutableList.Builder<>();
+        for (int i = 0; i < a.length; i++) {
+            mappings[i] = findCSVHeaderMappingAnnotation(a[i]);
+        }
+
+        return mappings;
+    }
+
+    private static <T> T parse(final Class<T> t, final Map<String, Integer> header, final String[] line) {
+        final Constructor constructor = t.getConstructors()[0];
+        final Class<?>[] parameterTypes = constructor.getParameterTypes();
+        final Object[] arguments = new Object[parameterTypes.length];
+        final CSVHeaderMapping[] mappings = mappings(t);
+        final List<String> valueStrings = new ArrayList<>();
+        for (int i = 0; i < mappings.length; i++) {
+            final CSVHeaderMapping mapping = mappings[i];
+            final String s = line[header.get(mapping.column())];
+            final Class<?> pType = parameterTypes[i];
+            if (pType.equals(String.class)) {
+                arguments[i] = s;
+            } else if (pType.equals(int.class)) {
+                arguments[i] = s.isEmpty() ? 0 : Integer.parseInt(s);
+            } else if (pType.equals(LocalDate.class)) {
+                arguments[i] = LocalDate.parse(s);
+            } else {
+                throw new AssertionError("do not know how to map String to " + pType);
+            }
+
+            valueStrings.add(line[header.get(mapping.column())]);
+        }
+
+        try {
+            return t.cast(constructor.newInstance(arguments));
+        } catch (final Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
         final Map<String, Integer> headerIndices = parseHeader(header);
-        final Function<String[], DataLine> parser = (line) -> parse(headerIndices, line);
+        final Function<String[], DataLine> parser = (line) -> parse(DataLine.class, headerIndices, line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<DataLine> unweighted = (line) -> !line.type.startsWith("Predicted");
