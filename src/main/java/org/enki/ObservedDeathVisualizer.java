@@ -1,7 +1,7 @@
 package org.enki;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.opencsv.CSVReader;
@@ -438,9 +438,21 @@ public class ObservedDeathVisualizer extends JFrame {
 
         private final Class<T> c;
         private final Constructor constructor;
-        private final Map<String, Integer> headerIndices;
+        private final BiMap<String, Integer> headerIndices;
         private final Column[] mappings;
         private final Class<?>[] parameterTypes;
+        private Map<Class, Function<String, Object>> parsersByType = new HashMap<>();
+        private Map<String, Function<String, Object>> parsersByColumn = new HashMap<>();
+
+        {
+            parsersByType.put(String.class, (s) -> s);
+            parsersByType.put(int.class, (s) -> Integer.parseInt(s));
+            parsersByType.put(long.class, (s) -> Long.parseLong(s));
+            parsersByType.put(float.class, (s) -> Float.parseFloat(s));
+            parsersByType.put(double.class, (s) -> Double.parseDouble(s));
+            parsersByType.put(Instant.class, (s) -> Instant.parse(s));
+            parsersByType.put(LocalDate.class, (s) -> LocalDate.parse(s));
+        }
 
         public CSVParser(final Class<T> c, final String[] header) {
             this.c = c;
@@ -448,6 +460,42 @@ public class ObservedDeathVisualizer extends JFrame {
             constructor = c.getConstructors()[0];
             mappings = mappings(c);
             parameterTypes = constructor.getParameterTypes();
+        }
+
+        public CSVParser(final Class<T> c, final String[] header,
+                         final Map<Class, Function<String, Object>> typeParsers,
+                         final Map<String, Function<String, Object>> columnParsers) {
+            this(c, header);
+            parsersByColumn.putAll(columnParsers);
+            parsersByType.putAll(typeParsers);
+        }
+
+        public static class Builder<T> {
+
+            private final Class<T> c;
+            private final String[] header;
+            private Map<Class, Function<String, Object>> typeParsers = new HashMap<>();
+            private Map<String, Function<String, Object>> columnParsers = new HashMap<>();
+
+            public Builder(final Class<T> c, final String[] header) {
+                this.c = c;
+                this.header = header;
+            }
+
+            public Builder withTypeParsers(final Map<Class, Function<String, Object>> typeParsers) {
+                this.typeParsers.putAll(typeParsers);
+                return this;
+            }
+
+            public Builder withColumnParsers(final Map<String, Function<String, Object>> columnParsers) {
+                this.columnParsers.putAll(columnParsers);
+                return this;
+            }
+
+            public CSVParser<T> build() {
+                return new CSVParser(c, header, typeParsers, columnParsers);
+            }
+
         }
 
         private static Column findCSVHeaderMappingAnnotation(final Annotation[] annotations) {
@@ -464,7 +512,6 @@ public class ObservedDeathVisualizer extends JFrame {
             final Constructor constructor = c.getConstructors()[0];
             final Annotation[][] a = constructor.getParameterAnnotations();
             final Column[] mappings = new Column[a.length];
-            final ImmutableList.Builder<Column> builder = new ImmutableList.Builder<>();
             for (int i = 0; i < a.length; i++) {
                 mappings[i] = findCSVHeaderMappingAnnotation(a[i]);
             }
@@ -472,26 +519,14 @@ public class ObservedDeathVisualizer extends JFrame {
             return mappings;
         }
 
-        private static Map<String, Integer> parseHeader(final String[] header) {
-            final ImmutableMap.Builder<String, Integer> b = new ImmutableMap.Builder<>();
+        private static BiMap<String, Integer> parseHeader(final String[] header) {
+            final ImmutableBiMap.Builder<String, Integer> b = new ImmutableBiMap.Builder<>();
             final int length = header.length;
             for (int i = 0; i < length; i++) {
                 b.put(normalize(header[i]), i);
             }
 
             return b.build();
-        }
-
-        private Function<String, Object> getParser(Class c) {
-            if (c.equals(String.class)) {
-                return (s) -> s;
-            } else if (c.equals(int.class)) {
-                return (s) -> s.isEmpty() ? 0 : Integer.parseInt(s);
-            } else if (c.equals(LocalDate.class)) {
-                return (s) -> LocalDate.parse(s);
-            } else {
-                return null;
-            }
         }
 
         private T parse(final String[] line) {
@@ -501,7 +536,11 @@ public class ObservedDeathVisualizer extends JFrame {
                 final Column mapping = mappings[i];
                 final String s = line[headerIndices.get(mapping.name())];
                 final Class<?> pType = parameterTypes[i];
-                final Function<String, Object> parser = getParser(pType);
+                Function<String, Object> parser = parsersByColumn.get(headerIndices.inverse().get(i));
+                if (parser == null) {
+                    parser = parsersByType.get(pType);
+                }
+
                 if (parser == null) {
                     throw new AssertionError("do not know how to map String to " + pType);
                 } else {
@@ -522,7 +561,8 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        final CSVParser<DataLine> p = new CSVParser<>(DataLine.class, header);
+        final CSVParser<DataLine> p = new CSVParser.Builder<>(DataLine.class, header).withColumnParsers(
+                Map.of("Observed Number", (s) -> s.isEmpty() ? 0 : Integer.parseInt(s))).build();
         final Function<String[], DataLine> parser = (line) -> p.parse(line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
