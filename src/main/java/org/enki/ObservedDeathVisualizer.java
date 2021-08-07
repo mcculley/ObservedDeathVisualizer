@@ -426,7 +426,12 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    public static class CSVParser<T> {
+    public static class CSVParser<T> implements Function<String[], T> {
+
+        @Override
+        public T apply(final String[] s) {
+            return parse(s);
+        }
 
         @Retention(RetentionPolicy.RUNTIME)
         @Target(ElementType.PARAMETER)
@@ -568,21 +573,20 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final CSVParser<DataLine> p =
                 new CSVParser.Builder<>(DataLine.class, header).withColumnParsers(columnParsers).build();
-        final Function<String[], DataLine> parser = (line) -> p.parse(line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<DataLine> unweighted = (line) -> !line.type.startsWith("Predicted");
 
         final Predicate<DataLine> hasCount = (line) -> line.observedNumber > 0;
 
-        final Function<DataLine, DataPoint> linetoDataPoint =
+        final Function<DataLine, DataPoint> lineToDataPoint =
                 (line) -> new DataPoint(line.weekEndingDate, line.observedNumber);
 
         final Function<DataLine, String> regionClassifier = (line) -> line.state;
         final Map<String, List<DataPoint>> regions =
-                lines.stream().map(parser).filter(unweighted).filter(hasCount)
+                lines.stream().map(p).filter(unweighted).filter(hasCount)
                         .collect(Collectors.groupingBy(regionClassifier,
-                                Collectors.mapping(linetoDataPoint, Collectors.toList())));
+                                Collectors.mapping(lineToDataPoint, Collectors.toList())));
         return regions.entrySet().stream();
     }
 
