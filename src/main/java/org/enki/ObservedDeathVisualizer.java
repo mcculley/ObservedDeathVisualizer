@@ -482,6 +482,18 @@ public class ObservedDeathVisualizer extends JFrame {
             return b.build();
         }
 
+        private Function<String, Object> getParser(Class c) {
+            if (c.equals(String.class)) {
+                return (s) -> s;
+            } else if (c.equals(int.class)) {
+                return (s) -> s.isEmpty() ? 0 : Integer.parseInt(s);
+            } else if (c.equals(LocalDate.class)) {
+                return (s) -> LocalDate.parse(s);
+            } else {
+                return null;
+            }
+        }
+
         private T parse(final String[] line) {
             final Object[] arguments = new Object[parameterTypes.length];
             final List<String> valueStrings = new ArrayList<>();
@@ -489,14 +501,11 @@ public class ObservedDeathVisualizer extends JFrame {
                 final Column mapping = mappings[i];
                 final String s = line[headerIndices.get(mapping.name())];
                 final Class<?> pType = parameterTypes[i];
-                if (pType.equals(String.class)) {
-                    arguments[i] = s;
-                } else if (pType.equals(int.class)) {
-                    arguments[i] = s.isEmpty() ? 0 : Integer.parseInt(s);
-                } else if (pType.equals(LocalDate.class)) {
-                    arguments[i] = LocalDate.parse(s);
-                } else {
+                final Function<String, Object> parser = getParser(pType);
+                if (parser == null) {
                     throw new AssertionError("do not know how to map String to " + pType);
+                } else {
+                    arguments[i] = parser.apply(s);
                 }
 
                 valueStrings.add(line[headerIndices.get(mapping.name())]);
