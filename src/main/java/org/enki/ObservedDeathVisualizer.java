@@ -442,9 +442,9 @@ public class ObservedDeathVisualizer extends JFrame {
         private final CSVHeaderMapping[] mappings;
         private final Class<?>[] parameterTypes;
 
-        public CSVParser(final Class<T> c, final Map<String, Integer> headerIndices) {
+        public CSVParser(final Class<T> c, final String[] header) {
             this.c = c;
-            this.headerIndices = headerIndices;
+            this.headerIndices = parseHeader(header);
             constructor = c.getConstructors()[0];
             mappings = mappings(c);
             parameterTypes = constructor.getParameterTypes();
@@ -470,6 +470,16 @@ public class ObservedDeathVisualizer extends JFrame {
             }
 
             return mappings;
+        }
+
+        private static Map<String, Integer> parseHeader(final String[] header) {
+            final ImmutableMap.Builder<String, Integer> b = new ImmutableMap.Builder<>();
+            final int length = header.length;
+            for (int i = 0; i < length; i++) {
+                b.put(normalize(header[i]), i);
+            }
+
+            return b.build();
         }
 
         private T parse(final String[] line) {
@@ -503,8 +513,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        final Map<String, Integer> headerIndices = parseHeader(header);
-        final CSVParser<DataLine> p = new CSVParser<>(DataLine.class, headerIndices);
+        final CSVParser<DataLine> p = new CSVParser<>(DataLine.class, header);
         final Function<String[], DataLine> parser = (line) -> p.parse(line);
 
         // Skip rows marked "Predicted". We want only the observed deaths.
@@ -588,16 +597,6 @@ public class ObservedDeathVisualizer extends JFrame {
         final byte[] targetArray = ByteStreams.toByteArray(is);
         Files.write(cachedFile.toPath(), targetArray);
         return ByteSource.wrap(targetArray).openStream();
-    }
-
-    private static Map<String, Integer> parseHeader(final String[] header) {
-        final ImmutableMap.Builder<String, Integer> b = new ImmutableMap.Builder<>();
-        final int length = header.length;
-        for (int i = 0; i < length; i++) {
-            b.put(normalize(header[i]), i);
-        }
-
-        return b.build();
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
