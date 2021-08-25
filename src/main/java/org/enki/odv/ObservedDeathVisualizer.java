@@ -75,6 +75,29 @@ public class ObservedDeathVisualizer extends JFrame {
         yearColors.put(2019, Color.BLUE);
         yearColors.put(2020, Color.RED);
         yearColors.put(2021, Color.GREEN);
+
+        dumpStatistics(region, data);
+    }
+
+    private synchronized static void dumpStatistics(final String region, final List<DataPoint> data) {
+        final List<DataPoint> filteredOutRemainder =
+                data.stream().filter((p) -> p.date.getMonthValue() <= 8).collect(Collectors.toList());
+        final List<DataPoint> d = data;
+        final Map<Integer, Integer> deathsByYear = d.stream()
+                .collect(Collectors.groupingBy((p) -> p.date.getYear(), Collectors.summingInt((p) -> p.count)));
+        final Map<Integer, Double> change = new HashMap<>();
+        for (int i = 2018; i <= 2021; i++) {
+            change.put(i,
+                    (((double) (deathsByYear.get(i) - deathsByYear.get(i - 1))) /
+                            (double) deathsByYear.get(i - 1)));
+        }
+
+        System.err.printf(region + ":\n");
+        System.err.printf("2017 %d\n", deathsByYear.get(2017));
+        change.entrySet()
+                .forEach((e) -> System.err.printf("%d %d %.2f%%\n", e.getKey(), deathsByYear.get(e.getKey()),
+                        e.getValue() * 100));
+        System.err.printf("\n");
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -335,7 +358,8 @@ public class ObservedDeathVisualizer extends JFrame {
         final URL data =
                 new URL("https://data.cdc.gov/api/views/xkkf-xrst/rows.csv?accessType=DOWNLOAD&bom=true&format=true%20target=");
         System.out.println("reading data from " + data);
-        final CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(CacheUtilities.openCachedURL(data))).build();
+        final CSVReader csvReader =
+                new CSVReaderBuilder(new InputStreamReader(CacheUtilities.openCachedURL(data))).build();
         final List<String[]> allLines = csvReader.readAll();
         final String[] header = allLines.remove(0);
         System.out.println("generating graphs");
