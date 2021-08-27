@@ -169,7 +169,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final float y = x;
             final float width = 2 * radius;
             final float height = width;
-            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 12000.0).doubleValue();
+            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 30000.0).doubleValue();
             g2d.setStroke(new BasicStroke(strokeWidth));
             g2d.drawOval((int) x, (int) y, (int) width, (int) height);
             final int count = radiusStep * i;
@@ -179,7 +179,7 @@ public class ObservedDeathVisualizer extends JFrame {
             newXform.scale(1, -1);
             g2d.setTransform(newXform);
             g2d.drawString(NumberFormat.getInstance().format(count),
-                    radius + (int) scaleTransformer.apply(maxCount / 3000.0).doubleValue(), 0);
+                    radius + (float) scaleTransformer.apply(maxCount / 3000.0).doubleValue(), 0);
             g2d.setTransform(current);
         }
 
