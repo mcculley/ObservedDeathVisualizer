@@ -119,7 +119,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final MonthDay d = MonthDay.of(i, 1);
             final Quantity<Angle> theta = monthDayToAngle(d);
             final PolarCoordinate c = new PolarCoordinate(radius, theta);
-            final Point2D p = c.toCartesian(clockwiseRotator);
+            final Point2D p = c.toCartesian(Function.identity(), clockwiseRotator);
             g2d.drawLine(0, 0, (int) p.getX(), (int) p.getY());
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
@@ -137,9 +137,9 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.scale(1, -1);
         drawMonths(g2d, 375);
 
-        final double scaleConstant = 350;
+        final double scaleConstant = 120000;
         final double newScale = scaleConstant / maxCount;
-        final double scale = newScale;
+        final double scale = scaleTransformer.apply(newScale);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
         final int radiusStep;
@@ -161,22 +161,25 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int maxRing = maxCount / radiusStep + 1;
 
-        final Font countFont = g2d.getFont().deriveFont(maxCount / 50.0f);
+        final Font countFont = g2d.getFont().deriveFont((float) scaleTransformer.apply(maxCount / 500.0).doubleValue());
         g2d.setFont(countFont);
         for (int i = 1; i <= maxRing; i++) {
-            final int x = i * -radiusStep;
-            final int y = x;
-            final int width = i * 2 * radiusStep;
-            final int height = width;
-            g2d.setStroke(new BasicStroke(maxCount / 600.0f));
-            g2d.drawOval(x, y, width, height);
+            final float radius = (int) scaleTransformer.apply((double) (i * radiusStep)).doubleValue();
+            final float x = -radius;
+            final float y = x;
+            final float width = 2 * radius;
+            final float height = width;
+            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 12000.0).doubleValue();
+            g2d.setStroke(new BasicStroke(strokeWidth));
+            g2d.drawOval((int) x, (int) y, (int) width, (int) height);
             final int count = radiusStep * i;
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
-            newXform.translate(count, 0);
+            newXform.rotate(-(i * PI * 2 / 12 - 7 * PI / 12));
             newXform.scale(1, -1);
             g2d.setTransform(newXform);
-            g2d.drawString(NumberFormat.getInstance().format(count), maxCount / 60, maxCount / 30);
+            g2d.drawString(NumberFormat.getInstance().format(count),
+                    radius + (int) scaleTransformer.apply(maxCount / 3000.0).doubleValue(), 0);
             g2d.setTransform(current);
         }
 
@@ -235,13 +238,14 @@ public class ObservedDeathVisualizer extends JFrame {
         for (int i = 1; i < numPoints; i++) {
             final GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, 2);
             final DataPoint startDataPoint = data.get(i - 1);
-            final Point2D.Double start = toPolar(startDataPoint).toCartesian(clockwiseRotator);
+            final Point2D.Double start = toPolar(startDataPoint).toCartesian(scaleTransformer, clockwiseRotator);
             polyline.moveTo(start.x, start.y);
             final DataPoint dataPoint = data.get(i);
-            final Point2D.Double p = toPolar(dataPoint).toCartesian(clockwiseRotator);
+            final Point2D.Double p = toPolar(dataPoint).toCartesian(scaleTransformer, clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            g2d.setStroke(getStroke(dataPoint.date, maxCount / 100.0f));
+            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 4000.0).doubleValue();
+            g2d.setStroke(getStroke(dataPoint.date, strokeWidth));
             g2d.draw(polyline);
         }
     }
@@ -261,6 +265,9 @@ public class ObservedDeathVisualizer extends JFrame {
         final int dayOfYear = cal.get(Calendar.DAY_OF_YEAR);
         return Quantities.getQuantity((double) (dayOfYear - 1) / 366.0 * PI * 2, RADIAN);
     }
+
+    //  private static final Function<Double, Double> scaleTransformer =Function.identity();
+    private static final Function<Double, Double> scaleTransformer = r -> Math.sqrt(r);
 
     // Rotate to clockwise with 0 at 12:00.
     private static final Function<Double, Double> clockwiseRotator = theta -> -theta + PI / 2;
