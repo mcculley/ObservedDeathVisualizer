@@ -97,6 +97,11 @@ public class ObservedDeathVisualizer extends JFrame {
         change.entrySet()
                 .forEach((e) -> System.err.printf("%d %d %.2f%%\n", e.getKey(), deathsByYear.get(e.getKey()),
                         e.getValue() * 100));
+
+        final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
+        System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
+
+        System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).collect(Collectors.toList()));
         System.err.printf("\n");
     }
 
