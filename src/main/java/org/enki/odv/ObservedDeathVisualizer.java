@@ -139,7 +139,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final double scaleConstant = 120000;
         final double newScale = scaleConstant / maxCount;
-        final double scale = scaleTransformer.apply(newScale);
+        final double scale = scale(newScale);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
         final int radiusStep;
@@ -161,15 +161,15 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int maxRing = maxCount / radiusStep + 1;
 
-        final Font countFont = g2d.getFont().deriveFont((float) scaleTransformer.apply(maxCount / 500.0).doubleValue());
+        final Font countFont = g2d.getFont().deriveFont(scale(maxCount / 500.0f));
         g2d.setFont(countFont);
         for (int i = 1; i <= maxRing; i++) {
-            final float radius = (int) scaleTransformer.apply((double) (i * radiusStep)).doubleValue();
+            final float radius = scale(i * radiusStep);
             final float x = -radius;
             final float y = x;
             final float width = 2 * radius;
             final float height = width;
-            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 30000.0).doubleValue();
+            final float strokeWidth = scale(maxCount / 30000.0f);
             g2d.setStroke(new BasicStroke(strokeWidth));
             g2d.drawOval((int) x, (int) y, (int) width, (int) height);
             final int count = radiusStep * i;
@@ -178,8 +178,7 @@ public class ObservedDeathVisualizer extends JFrame {
             newXform.rotate(-(i * PI * 2 / 12 - 7 * PI / 12));
             newXform.scale(1, -1);
             g2d.setTransform(newXform);
-            g2d.drawString(NumberFormat.getInstance().format(count),
-                    radius + (float) scaleTransformer.apply(maxCount / 3000.0).doubleValue(), 0);
+            g2d.drawString(NumberFormat.getInstance().format(count), radius + scale(maxCount / 6000.0f), 0);
             g2d.setTransform(current);
         }
 
@@ -244,7 +243,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Point2D.Double p = toPolar(dataPoint).toCartesian(scaleTransformer, clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            final float strokeWidth = (float) scaleTransformer.apply(maxCount / 4000.0).doubleValue();
+            final float strokeWidth = scale(maxCount / 4000.0f);
             g2d.setStroke(getStroke(dataPoint.date, strokeWidth));
             g2d.draw(polyline);
         }
@@ -271,6 +270,14 @@ public class ObservedDeathVisualizer extends JFrame {
 
     // Rotate to clockwise with 0 at 12:00.
     private static final Function<Double, Double> clockwiseRotator = theta -> -theta + PI / 2;
+
+    private static float scale(final float f) {
+        return (float) scaleTransformer.apply((double) f).doubleValue();
+    }
+
+    private static double scale(final double f) {
+        return scaleTransformer.apply(f).doubleValue();
+    }
 
     public void paint(final Graphics g) {
         super.paint(g);
