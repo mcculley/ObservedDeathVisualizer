@@ -21,6 +21,12 @@
     <dependencies>
 
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>30.1.1-jre</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.enki</groupId>
             <artifactId>core</artifactId>
             <version>[0.0.28,)</version>

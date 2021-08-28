@@ -1,5 +1,6 @@
 package org.enki.odv;
 
+import com.google.common.base.Converter;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
@@ -40,6 +41,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.PI;
+import static java.lang.Math.pow;
+import static java.lang.Math.sqrt;
 import static tech.units.indriya.unit.Units.RADIAN;
 
 /**
@@ -138,7 +141,7 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.scale(1.0f, -1.0f);
         drawMonths(g2d, 375);
 
-        final float scaleConstant = 120000.0f;
+        final float scaleConstant = (float) radiusTransformer.reverse().convert(350.0).doubleValue();
         final float scale = scale(scaleConstant / maxCount);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
@@ -240,10 +243,10 @@ public class ObservedDeathVisualizer extends JFrame {
         for (int i = 1; i < numPoints; i++) {
             final GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, 2);
             final DataPoint startDataPoint = data.get(i - 1);
-            final Point2D.Double start = toPolar(startDataPoint).toCartesian(scaleTransformer, clockwiseRotator);
+            final Point2D.Double start = toPolar(startDataPoint).toCartesian(radiusTransformer, clockwiseRotator);
             polyline.moveTo(start.x, start.y);
             final DataPoint dataPoint = data.get(i);
-            final Point2D.Double p = toPolar(dataPoint).toCartesian(scaleTransformer, clockwiseRotator);
+            final Point2D.Double p = toPolar(dataPoint).toCartesian(radiusTransformer, clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
             final float strokeWidth = 4 / scale;
@@ -268,14 +271,28 @@ public class ObservedDeathVisualizer extends JFrame {
         return Quantities.getQuantity((double) (dayOfYear - 1) / 366.0 * PI * 2, RADIAN);
     }
 
-    //  private static final Function<Double, Double> scaleTransformer =Function.identity();
-    private static final Function<Double, Double> scaleTransformer = r -> Math.sqrt(r);
+    private static final Converter<Double, Double> linearConverter = Converter.identity();
+    private static final Converter<Double, Double> squareRootConverter = new Converter<>() {
+
+        @Override
+        protected Double doForward(final Double x) {
+            return sqrt(x);
+        }
+
+        @Override
+        protected Double doBackward(Double x) {
+            return pow(x, 2);
+        }
+
+    };
+
+    private static final Converter<Double, Double> radiusTransformer = squareRootConverter;
 
     // Rotate to clockwise with 0 at 12:00.
     private static final Function<Double, Double> clockwiseRotator = theta -> -theta + PI / 2;
 
     private static float scale(final float f) {
-        return (float) scaleTransformer.apply((double) f).doubleValue();
+        return (float) radiusTransformer.convert((double) f).doubleValue();
     }
 
     public void paint(final Graphics g) {
