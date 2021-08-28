@@ -246,7 +246,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Point2D.Double p = toPolar(dataPoint).toCartesian(scaleTransformer, clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            final float strokeWidth = 1 / scale;
+            final float strokeWidth = 2 / scale;
             g2d.setStroke(getStroke(dataPoint.date, strokeWidth));
             g2d.draw(polyline);
         }
