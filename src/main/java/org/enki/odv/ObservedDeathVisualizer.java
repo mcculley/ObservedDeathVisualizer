@@ -110,11 +110,11 @@ public class ObservedDeathVisualizer extends JFrame {
         return distance / duration.toDays();
     }
 
-    void drawMonths(final Graphics2D g2d, final int radius) {
-        final Font monthFont = g2d.getFont().deriveFont(15f);
+    void drawMonths(final Graphics2D g2d, final float radius) {
+        final Font monthFont = g2d.getFont().deriveFont(15.0f);
         g2d.setFont(monthFont);
         g2d.setColor(Color.BLACK);
-        g2d.setStroke(new BasicStroke(1));
+        g2d.setStroke(new BasicStroke(1.0f));
         for (int i = 1; i <= 12; i++) {
             final MonthDay d = MonthDay.of(i, 1);
             final Quantity<Angle> theta = monthDayToAngle(d);
@@ -124,8 +124,8 @@ public class ObservedDeathVisualizer extends JFrame {
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
             newXform.translate(p.getX(), p.getY());
-            newXform.rotate(-((i - 1) * (PI * 2 / 12)) + (PI / 2));
-            newXform.scale(1, -1);
+            newXform.rotate(-((i - 1.0f) * PI / 6.0f) + (PI / 2.0f));
+            newXform.scale(1.0f, -1.0f);
             g2d.setTransform(newXform);
             final String monthName = d.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
             g2d.drawString(monthName, 0, 0);
@@ -134,10 +134,10 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     void plot(final Graphics2D g2d) {
-        g2d.scale(1, -1);
+        g2d.scale(1.0f, -1.0f);
         drawMonths(g2d, 375);
 
-        final float scaleConstant = 120000;
+        final float scaleConstant = 120000.0f;
         final float scale = scale(scaleConstant / maxCount);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
@@ -160,23 +160,23 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int maxRing = maxCount / radiusStep + 1;
 
-        for (int i = 1; i <= maxRing; i++) {
+        for (float i = 1; i <= maxRing; i++) {
             final float radius = scale(i * radiusStep);
             final float x = -radius;
             final float y = x;
-            final float width = 2 * radius;
+            final float width = 2.0f * radius;
             final float height = width;
-            final float strokeWidth = 1 / scale;
+            final float strokeWidth = 1.0f / scale;
             g2d.setStroke(new BasicStroke(strokeWidth));
             g2d.drawOval((int) x, (int) y, (int) width, (int) height);
-            final int count = radiusStep * i;
+            final float count = radiusStep * i;
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
-            newXform.rotate(-(i * PI / 6 - 7 * PI / 12));
-            newXform.scale(1, -1);
-            newXform.translate(radius, 0);
-            newXform.rotate(PI / 2);
-            newXform.scale(1 / scale, 1 / scale);
+            newXform.rotate(-(i * PI / 6.0f - 7.0f * PI / 12.0f));
+            newXform.scale(1.0f, -1.0f);
+            newXform.translate(radius, 0.0f);
+            newXform.rotate(PI / 2.0f);
+            newXform.scale(1.0f / scale, 1.0f / scale);
             g2d.setTransform(newXform);
             final String countFormatted = NumberFormat.getInstance().format(count);
             final int stringWidth = g2d.getFontMetrics().stringWidth(countFormatted);
