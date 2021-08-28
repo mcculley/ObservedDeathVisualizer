@@ -71,7 +71,8 @@ public class ObservedDeathVisualizer extends JFrame {
         maxDate = maxDate(data);
         duration = Duration.between(minDate.atStartOfDay(), maxDate.atStartOfDay());
 
-        setSize(1000, 1000);
+        final int size = 1000;
+        setSize(size, size);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         yearColors.put(2017, Color.PINK);
@@ -139,10 +140,11 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     void plot(final Graphics2D g2d) {
+        final float upperLimit = (g2d.getClipBounds().width / 2.0f) * 0.80f;
         g2d.scale(1.0f, -1.0f);
-        drawMonths(g2d, 375);
+        drawMonths(g2d, upperLimit);
 
-        final float scaleConstant = (float) radiusTransformer.reverse().convert(350.0).doubleValue();
+        final float scaleConstant = (float) radiusTransformer.reverse().convert(upperLimit * 0.90).doubleValue();
         final float scale = scale(scaleConstant / maxCount);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
@@ -406,8 +408,10 @@ public class ObservedDeathVisualizer extends JFrame {
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, e.getValue());
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
-            final BufferedImage i = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
+            final int size = 1000;
+            final BufferedImage i = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
             final Graphics2D g = i.createGraphics();
+            g.clipRect(0, 0, size, size);
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             final Rectangle imageBounds = new Rectangle(0, 0, i.getWidth(), i.getHeight());
