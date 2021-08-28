@@ -172,7 +172,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final int count = radiusStep * i;
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
-            newXform.rotate(-(i * PI * 2 / 12 - 7 * PI / 12));
+            newXform.rotate(-(i * PI / 6 - 7 * PI / 12));
             newXform.scale(1, -1);
             newXform.translate(radius, 0);
             newXform.rotate(PI / 2);
