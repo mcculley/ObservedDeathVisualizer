@@ -160,17 +160,13 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int maxRing = maxCount / radiusStep + 1;
 
-        System.err.println("region=" + region);
-        System.err.println("scale=" + scale);
-        System.err.println("scale(maxCount / 500.0f)=" + scale(maxCount / 500.0f));
-
         for (int i = 1; i <= maxRing; i++) {
             final float radius = scale(i * radiusStep);
             final float x = -radius;
             final float y = x;
             final float width = 2 * radius;
             final float height = width;
-            final float strokeWidth = scale(maxCount / 30000.0f);
+            final float strokeWidth = 1 / scale;
             g2d.setStroke(new BasicStroke(strokeWidth));
             g2d.drawOval((int) x, (int) y, (int) width, (int) height);
             final int count = radiusStep * i;
@@ -188,7 +184,7 @@ public class ObservedDeathVisualizer extends JFrame {
             g2d.setTransform(current);
         }
 
-        plotData(g2d);
+        plotData(g2d, scale);
     }
 
     private void drawKey(final Graphics2D g2d) {
@@ -238,7 +234,7 @@ public class ObservedDeathVisualizer extends JFrame {
         return ColorUtilities.setAlpha(base, alpha);
     }
 
-    private void plotData(final Graphics2D g2d) {
+    private void plotData(final Graphics2D g2d, final float scale) {
         final int numPoints = data.size();
         for (int i = 1; i < numPoints; i++) {
             final GeneralPath polyline = new GeneralPath(GeneralPath.WIND_EVEN_ODD, 2);
@@ -249,7 +245,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Point2D.Double p = toPolar(dataPoint).toCartesian(scaleTransformer, clockwiseRotator);
             polyline.lineTo(p.x, p.y);
             g2d.setColor(getColor(dataPoint.date));
-            final float strokeWidth = scale(maxCount / 4000.0f);
+            final float strokeWidth = 1 / scale;
             g2d.setStroke(getStroke(dataPoint.date, strokeWidth));
             g2d.draw(polyline);
         }
