@@ -278,10 +278,6 @@ public class ObservedDeathVisualizer extends JFrame {
         return (float) scaleTransformer.apply((double) f).doubleValue();
     }
 
-    private static double scale(final double f) {
-        return scaleTransformer.apply(f).doubleValue();
-    }
-
     public void paint(final Graphics g) {
         super.paint(g);
         final Graphics2D g2d = (Graphics2D) g;
