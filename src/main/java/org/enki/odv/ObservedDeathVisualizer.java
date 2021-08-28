@@ -15,6 +15,7 @@ import javax.measure.quantity.Angle;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Arc2D;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
@@ -168,7 +169,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final float height = width;
             final float strokeWidth = 1.0f / scale;
             g2d.setStroke(new BasicStroke(strokeWidth));
-            g2d.drawOval((int) x, (int) y, (int) width, (int) height);
+            g2d.draw(new Arc2D.Double(x, y, width, height, 0, 360, Arc2D.CHORD));
             final float count = radiusStep * i;
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
