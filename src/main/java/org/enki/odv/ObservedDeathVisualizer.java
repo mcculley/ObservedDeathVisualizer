@@ -181,7 +181,7 @@ public class ObservedDeathVisualizer extends JFrame {
             g2d.setTransform(newXform);
             final String countFormatted = NumberFormat.getInstance().format(count);
             final int stringWidth = g2d.getFontMetrics().stringWidth(countFormatted);
-            g2d.drawString(countFormatted, -(stringWidth / 2.0f), 0.0f);
+            g2d.drawString(countFormatted, -(stringWidth / 2.0f), -5.0f);
             g2d.setTransform(current);
         }
 
