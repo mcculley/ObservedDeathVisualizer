@@ -164,8 +164,6 @@ public class ObservedDeathVisualizer extends JFrame {
         System.err.println("scale=" + scale);
         System.err.println("scale(maxCount / 500.0f)=" + scale(maxCount / 500.0f));
 
-        final Font countFont = g2d.getFont().deriveFont(scale(maxCount / 500.0f));
-        g2d.setFont(countFont);
         for (int i = 1; i <= maxRing; i++) {
             final float radius = scale(i * radiusStep);
             final float x = -radius;
@@ -182,6 +180,7 @@ public class ObservedDeathVisualizer extends JFrame {
             newXform.scale(1, -1);
             newXform.translate(radius, 0);
             newXform.rotate(PI / 2);
+            newXform.scale(1 / scale, 1 / scale);
             g2d.setTransform(newXform);
             final String countFormatted = NumberFormat.getInstance().format(count);
             final int stringWidth = g2d.getFontMetrics().stringWidth(countFormatted);
