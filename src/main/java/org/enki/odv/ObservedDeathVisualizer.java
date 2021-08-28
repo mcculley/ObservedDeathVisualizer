@@ -128,11 +128,12 @@ public class ObservedDeathVisualizer extends JFrame {
             final AffineTransform current = g2d.getTransform();
             final AffineTransform newXform = g2d.getTransform();
             newXform.translate(p.getX(), p.getY());
-            newXform.rotate(-((i - 1.0f) * PI / 6.0f) + (PI / 2.0f));
+            newXform.rotate(-((i - 1.0f) * PI / 6.0f));
             newXform.scale(1.0f, -1.0f);
             g2d.setTransform(newXform);
             final String monthName = d.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
-            g2d.drawString(monthName, 0, 0);
+            final int stringWidth = g2d.getFontMetrics().stringWidth(monthName);
+            g2d.drawString(monthName, -((float) stringWidth / 2.0f), -5.0f);
             g2d.setTransform(current);
         }
     }
