@@ -137,9 +137,8 @@ public class ObservedDeathVisualizer extends JFrame {
         g2d.scale(1, -1);
         drawMonths(g2d, 375);
 
-        final double scaleConstant = 120000;
-        final double newScale = scaleConstant / maxCount;
-        final double scale = scale(newScale);
+        final float scaleConstant = 120000;
+        final float scale = scale(scaleConstant / maxCount);
         final AffineTransform t = AffineTransform.getScaleInstance(scale, scale);
         g2d.transform(t);
         final int radiusStep;
@@ -161,6 +160,10 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final int maxRing = maxCount / radiusStep + 1;
 
+        System.err.println("region=" + region);
+        System.err.println("scale=" + scale);
+        System.err.println("scale(maxCount / 500.0f)=" + scale(maxCount / 500.0f));
+
         final Font countFont = g2d.getFont().deriveFont(scale(maxCount / 500.0f));
         g2d.setFont(countFont);
         for (int i = 1; i <= maxRing; i++) {
@@ -177,8 +180,12 @@ public class ObservedDeathVisualizer extends JFrame {
             final AffineTransform newXform = g2d.getTransform();
             newXform.rotate(-(i * PI * 2 / 12 - 7 * PI / 12));
             newXform.scale(1, -1);
+            newXform.translate(radius, 0);
+            newXform.rotate(PI / 2);
             g2d.setTransform(newXform);
-            g2d.drawString(NumberFormat.getInstance().format(count), radius + scale(maxCount / 6000.0f), 0);
+            final String countFormatted = NumberFormat.getInstance().format(count);
+            final int stringWidth = g2d.getFontMetrics().stringWidth(countFormatted);
+            g2d.drawString(countFormatted, -(stringWidth / 2.0f), 0.0f);
             g2d.setTransform(current);
         }
 
