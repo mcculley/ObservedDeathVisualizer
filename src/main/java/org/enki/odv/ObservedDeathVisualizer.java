@@ -108,6 +108,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
 
+        // FIXME: Figure out what to do about NY versus NYC with CDC versus Census data.
         final Integer population = census.get(region);
         if (population != null) {
             final double p = population;
@@ -119,7 +120,7 @@ public class ObservedDeathVisualizer extends JFrame {
                 System.err.println("lastGoodDataPoint=" + l);
                 final double deathsPerWeekPerHundredThousand = l.count / (p / 100000);
                 System.err.printf("deaths per week per 100,000 population: %f\n", deathsPerWeekPerHundredThousand);
-                System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand/7);
+                System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand / 7);
             }
         }
 
