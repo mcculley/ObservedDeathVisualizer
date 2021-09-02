@@ -109,18 +109,6 @@ public class ObservedDeathVisualizer extends JFrame {
         final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
 
-        // FIXME: Figure out what to do about NY versus NYC with CDC versus Census data.
-        final Integer population = census.get(region);
-        if (population != null) {
-            final double p = population;
-            System.err.printf("population: %d\n", population);
-            final DataPoint lastGoodDataPoint = lastGoodDataPoint(d);
-            System.err.println("lastGoodDataPoint=" + lastGoodDataPoint);
-            final double deathsPerWeekPerHundredThousand = lastGoodDataPoint.count / (p / 100000);
-            System.err.printf("deaths per week per 100,000 population: %f\n", deathsPerWeekPerHundredThousand);
-            System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand / 7);
-        }
-
         System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).collect(Collectors.toList()));
         System.err.printf("\n");
     }
@@ -451,6 +439,14 @@ public class ObservedDeathVisualizer extends JFrame {
         return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::getRegion, CensusLine::getPopulation));
     }
 
+    private static Map<String, Integer> mergeNYC(final Map<String, Integer> map) {
+        final Map<String, Integer> merged = new HashMap<>(map);
+        final Integer nyc = merged.remove("New York City");
+        final Integer ny = merged.remove("New York");
+        merged.put("New York", nyc + ny);
+        return merged;
+    }
+
     private static void dumpPerCapitaStatistics(final Map<String, Integer> census,
                                                 final Map<String, List<DataPoint>> regionData) {
         final LocalDate latestGoodDataDate = regionData.values().stream().map((v) -> lastGoodDataPoint(v))
@@ -459,18 +455,13 @@ public class ObservedDeathVisualizer extends JFrame {
                 Collectors.toMap((e) -> e.getKey(),
                         (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
                                 .findFirst()));
-        final Map<String, Integer> deathCount = lastGoodDataPoint.entrySet().stream()
+        final Map<String, Integer> deathCount = mergeNYC(lastGoodDataPoint.entrySet().stream()
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> {
                     final Optional<DataPoint> p = e.getValue();
                     return p.isPresent() ? p.get().count : 0;
-                }));
+                })));
 
-        final Map<String, Integer> deathCountWithNYC = new HashMap<>(deathCount);
-        final Integer nyc = deathCountWithNYC.remove("New York City");
-        final Integer ny = deathCountWithNYC.remove("New York");
-        deathCountWithNYC.put("New York", nyc + ny);
-
-        final Map<String, Double> deathPerCapita = deathCountWithNYC.entrySet().stream()
+        final Map<String, Double> deathPerCapita = deathCount.entrySet().stream()
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue() / (double) census.get(e.getKey())));
 
         final Map<String, Double> deathPerCapitaSorted = sortByValue(deathPerCapita, Comparator.reverseOrder());
@@ -481,7 +472,7 @@ public class ObservedDeathVisualizer extends JFrame {
         int count = 1;
         for (final Map.Entry<String, Double> e : deathPerCapitaSorted.entrySet()) {
             System.err.printf("%d: %s %.2f (%s deaths in population of %s)\n", count++, e.getKey(), e.getValue() * unit,
-                    NumberFormat.getInstance().format(deathCountWithNYC.get(e.getKey())),
+                    NumberFormat.getInstance().format(deathCount.get(e.getKey())),
                     NumberFormat.getInstance().format(census.get(e.getKey())));
         }
     }
@@ -489,7 +480,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map, final Comparator<V> c) {
         return map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue(), (u, v) -> {
-                    throw new IllegalStateException(String.format("Duplicate key %s", u));
+                    throw new AssertionError("cannot have a duplicate key");
                 }, LinkedHashMap::new));
     }
 
