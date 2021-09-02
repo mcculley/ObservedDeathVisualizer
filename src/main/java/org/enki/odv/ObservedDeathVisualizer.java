@@ -30,8 +30,11 @@ import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -454,15 +457,46 @@ public class ObservedDeathVisualizer extends JFrame {
                                                 final Map<String, List<DataPoint>> regionData) {
         final LocalDate latestGoodDataDate = regionData.values().stream().map((v) -> lastGoodDataPoint(v))
                 .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get().date;
-        System.err.println("latestGoodDataDate=" + latestGoodDataDate);
-        final Map<String, Optional<DataPoint>> lastGoodDataPoint = new HashMap<>();
-        for (final Map.Entry<String, List<DataPoint>> e : regionData.entrySet()) {
-            final Optional<DataPoint> p =
-                    e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0).findFirst();
-            lastGoodDataPoint.put(e.getKey(), p);
+        final Map<String, Optional<DataPoint>> lastGoodDataPoint = regionData.entrySet().stream().collect(
+                Collectors.toMap((e) -> e.getKey(),
+                        (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
+                                .findFirst()));
+        final Map<String, Integer> deathCount = lastGoodDataPoint.entrySet().stream()
+                .collect(Collectors.toMap((e) -> e.getKey(), (e) -> {
+                    final Optional<DataPoint> p = e.getValue();
+                    return p.isPresent() ? p.get().count : 0;
+                }));
+
+        final Map<String, Integer> deathCountWithNYC = new HashMap<>(deathCount);
+        final Integer nyc = deathCountWithNYC.remove("New York City");
+        final Integer ny = deathCountWithNYC.remove("New York");
+        deathCountWithNYC.put("New York", nyc + ny);
+
+        final Map<String, Double> deathPerCapita = deathCountWithNYC.entrySet().stream()
+                .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue() / (double) census.get(e.getKey())));
+
+        final Map<String, Double> deathPerCapitaSorted = sortByValue(deathPerCapita, Comparator.reverseOrder());
+
+        final int unit = 100000;
+        System.err.printf("%s deaths per %s people per week\n", latestGoodDataDate,
+                NumberFormat.getInstance().format(unit));
+        int count = 1;
+        for (final Map.Entry<String, Double> e : deathPerCapitaSorted.entrySet()) {
+            System.err.printf("%d: %s %.2f (%s deaths in population of %s)\n", count++, e.getKey(), e.getValue() * unit,
+                    NumberFormat.getInstance().format(deathCountWithNYC.get(e.getKey())),
+                    NumberFormat.getInstance().format(census.get(e.getKey())));
+        }
+    }
+
+    private static <K, V> Map<K, V> sortByValue(final Map<K, V> map, final Comparator<V> c) {
+        final List<Map.Entry<K, V>> list = new LinkedList<>(map.entrySet());
+        Collections.sort(list, (o1, o2) -> c.compare(o1.getValue(), o2.getValue()));
+        final Map<K, V> result = new LinkedHashMap<>();
+        for (final Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
         }
 
-        System.err.println(lastGoodDataPoint);
+        return result;
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
