@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -62,7 +63,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private final int maxCount;
     private final Map<Integer, Color> yearColors = new HashMap<>();
 
-    public ObservedDeathVisualizer(final String region, final List<DataPoint> data) {
+    public ObservedDeathVisualizer(final Map<String, Integer> census, final String region, final List<DataPoint> data) {
         super(region);
         this.data = data;
         this.region = region;
@@ -81,10 +82,11 @@ public class ObservedDeathVisualizer extends JFrame {
         yearColors.put(2020, Color.RED);
         yearColors.put(2021, Color.GREEN);
 
-        dumpStatistics(region, data);
+        dumpStatistics(census, region, data);
     }
 
-    private synchronized static void dumpStatistics(final String region, final List<DataPoint> data) {
+    private synchronized static void dumpStatistics(final Map<String, Integer> census, final String region,
+                                                    final List<DataPoint> data) {
         final List<DataPoint> filteredOutRemainder =
                 data.stream().filter((p) -> p.date.getMonthValue() <= 8).collect(Collectors.toList());
         final List<DataPoint> d = data;
@@ -105,6 +107,21 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
+
+        final Integer population = census.get(region);
+        if (population != null) {
+            final double p = population;
+            System.err.printf("population: %d\n", population);
+            final Optional<DataPoint> lastGoodDataPoint =
+                    d.stream().filter((e) -> e.date.equals(LocalDate.parse("2021-07-17"))).findAny();
+            if (lastGoodDataPoint.isPresent()) {
+                final DataPoint l = lastGoodDataPoint.get();
+                System.err.println("lastGoodDataPoint=" + l);
+                final double deathsPerWeekPerHundredThousand = l.count / (p / 100000);
+                System.err.printf("deaths per week per 100,000 population: %f\n", deathsPerWeekPerHundredThousand);
+                System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand/7);
+            }
+        }
 
         System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).collect(Collectors.toList()));
         System.err.printf("\n");
@@ -366,6 +383,27 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
+    public static class CensusLine {
+
+        public final String region;
+        public final int population;
+
+        public CensusLine(@CSVParser.Column(name = "Region") final String region,
+                          @CSVParser.Column(name = "Population") final int population) {
+            this.region = region;
+            this.population = population;
+        }
+
+        public String getRegion() {
+            return region;
+        }
+
+        public int getPopulation() {
+            return population;
+        }
+
+    }
+
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
         // Special parsing for the "Observed Number" column: It sometimes contains empty strings. Set those to 0 and
@@ -392,7 +430,20 @@ public class ObservedDeathVisualizer extends JFrame {
         return regions.entrySet().stream();
     }
 
+    private static Map<String, Integer> parseCensus() throws IOException, CsvException {
+        final URL censusLocation = ObservedDeathVisualizer.class.getResource("/census-2020.csv");
+        final CSVReader censusCSVReader =
+                new CSVReaderBuilder(new InputStreamReader(censusLocation.openStream())).build();
+        final List<String[]> censusLines = censusCSVReader.readAll();
+        final String[] censusHeader = censusLines.remove(0);
+        final CSVParser<CensusLine> p = new CSVParser.Builder<>(CensusLine.class, censusHeader).build();
+        return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::getRegion, CensusLine::getPopulation));
+    }
+
     public static void main(final String[] args) throws IOException, CsvException {
+        final Map<String, Integer> census = parseCensus();
+        System.err.println("census=" + census);
+
         final URL data =
                 new URL("https://data.cdc.gov/api/views/xkkf-xrst/rows.csv?accessType=DOWNLOAD&bom=true&format=true%20target=");
         System.out.println("reading data from " + data);
@@ -405,7 +456,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         regionLists.forEach((e) -> {
             final String region = e.getKey();
-            final ObservedDeathVisualizer app = new ObservedDeathVisualizer(region, e.getValue());
+            final ObservedDeathVisualizer app = new ObservedDeathVisualizer(census, region, e.getValue());
             SwingUtilities.invokeLater(() -> app.setVisible(true));
 
             final int size = 1000;
