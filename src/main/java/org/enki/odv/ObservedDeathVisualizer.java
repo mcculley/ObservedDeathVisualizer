@@ -113,19 +113,20 @@ public class ObservedDeathVisualizer extends JFrame {
         if (population != null) {
             final double p = population;
             System.err.printf("population: %d\n", population);
-            final Optional<DataPoint> lastGoodDataPoint =
-                    d.stream().filter((e) -> e.date.equals(LocalDate.parse("2021-07-17"))).findAny();
-            if (lastGoodDataPoint.isPresent()) {
-                final DataPoint l = lastGoodDataPoint.get();
-                System.err.println("lastGoodDataPoint=" + l);
-                final double deathsPerWeekPerHundredThousand = l.count / (p / 100000);
-                System.err.printf("deaths per week per 100,000 population: %f\n", deathsPerWeekPerHundredThousand);
-                System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand / 7);
-            }
+            final DataPoint lastGoodDataPoint = lastGoodDataPoint(d);
+            System.err.println("lastGoodDataPoint=" + lastGoodDataPoint);
+            final double deathsPerWeekPerHundredThousand = lastGoodDataPoint.count / (p / 100000);
+            System.err.printf("deaths per week per 100,000 population: %f\n", deathsPerWeekPerHundredThousand);
+            System.err.printf("deaths per day per 100,000 population: %f\n", deathsPerWeekPerHundredThousand / 7);
         }
 
         System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).collect(Collectors.toList()));
         System.err.printf("\n");
+    }
+
+    private static final DataPoint lastGoodDataPoint(final List<DataPoint> l) {
+        return l.stream().filter((e) -> e.date.compareTo(incompleteDataDate) <= 0)
+                .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get();
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -353,6 +354,14 @@ public class ObservedDeathVisualizer extends JFrame {
         public DataPoint(final LocalDate date, final int count) {
             this.date = date;
             this.count = count;
+        }
+
+        public LocalDate getDate() {
+            return date;
+        }
+
+        public int getCount() {
+            return count;
         }
 
         @Override
