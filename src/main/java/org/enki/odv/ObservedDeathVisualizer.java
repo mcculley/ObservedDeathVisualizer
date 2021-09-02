@@ -478,8 +478,9 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    private static <T, K, U> Collector<T, ?, Map<K, U>> toLinkedMap(final Function<? super T, ? extends K> keyMapper,
-                                                                    final Function<? super T, ? extends U> valueMapper) {
+    private static <T, K, U> Collector<T, ?, Map<K, U>> toLinkedHashMap(
+            final Function<? super T, ? extends K> keyMapper,
+            final Function<? super T, ? extends U> valueMapper) {
         return Collectors.toMap(keyMapper, valueMapper, (u, v) -> {
             throw new IllegalStateException(String.format("Duplicate key %s", u));
         }, LinkedHashMap::new);
@@ -487,7 +488,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map, final Comparator<V> c) {
         return map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
-                .collect(toLinkedMap((e) -> e.getKey(), (e) -> e.getValue()));
+                .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
