@@ -30,11 +30,9 @@ import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -489,14 +487,10 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map, final Comparator<V> c) {
-        final List<Map.Entry<K, V>> list = new LinkedList<>(map.entrySet());
-        Collections.sort(list, (o1, o2) -> c.compare(o1.getValue(), o2.getValue()));
-        final Map<K, V> result = new LinkedHashMap<>();
-        for (final Map.Entry<K, V> entry : list) {
-            result.put(entry.getKey(), entry.getValue());
-        }
-
-        return result;
+        return map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
+                .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue(), (u, v) -> {
+                    throw new IllegalStateException(String.format("Duplicate key %s", u));
+                }, LinkedHashMap::new));
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
