@@ -450,6 +450,21 @@ public class ObservedDeathVisualizer extends JFrame {
         return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::getRegion, CensusLine::getPopulation));
     }
 
+    private static void dumpPerCapitaStatistics(final Map<String, Integer> census,
+                                                final Map<String, List<DataPoint>> regionData) {
+        final LocalDate latestGoodDataDate = regionData.values().stream().map((v) -> lastGoodDataPoint(v))
+                .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get().date;
+        System.err.println("latestGoodDataDate=" + latestGoodDataDate);
+        final Map<String, Optional<DataPoint>> lastGoodDataPoint = new HashMap<>();
+        for (final Map.Entry<String, List<DataPoint>> e : regionData.entrySet()) {
+            final Optional<DataPoint> p =
+                    e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0).findFirst();
+            lastGoodDataPoint.put(e.getKey(), p);
+        }
+
+        System.err.println(lastGoodDataPoint);
+    }
+
     public static void main(final String[] args) throws IOException, CsvException {
         final Map<String, Integer> census = parseCensus();
         System.err.println("census=" + census);
@@ -463,8 +478,9 @@ public class ObservedDeathVisualizer extends JFrame {
         final String[] header = allLines.remove(0);
         System.out.println("generating graphs");
         final Stream<Map.Entry<String, List<DataPoint>>> regionLists = splitRegions(header, allLines).parallel();
-
+        final Map<String, List<DataPoint>> regionData = new HashMap<>();
         regionLists.forEach((e) -> {
+            regionData.put(e.getKey(), e.getValue());
             final String region = e.getKey();
             final ObservedDeathVisualizer app = new ObservedDeathVisualizer(census, region, e.getValue());
             SwingUtilities.invokeLater(() -> app.setVisible(true));
@@ -488,6 +504,7 @@ public class ObservedDeathVisualizer extends JFrame {
             }
         });
 
+        dumpPerCapitaStatistics(census, regionData);
     }
 
 }
