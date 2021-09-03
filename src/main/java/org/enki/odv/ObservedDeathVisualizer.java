@@ -493,8 +493,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map) {
         final Comparator<V> c = (Comparator<V>) Comparator.naturalOrder();
-        return map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
-                .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+        return sortByValue(map, c);
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
