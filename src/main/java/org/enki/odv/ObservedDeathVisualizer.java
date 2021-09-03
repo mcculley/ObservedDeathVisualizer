@@ -493,6 +493,7 @@ public class ObservedDeathVisualizer extends JFrame {
         }
 
         writeCSV(census, merged);
+        writeCSVTriples(census, merged);
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
@@ -502,13 +503,13 @@ public class ObservedDeathVisualizer extends JFrame {
                 data.values().stream().flatMap(List::stream).map((e) -> e.date).collect(Collectors.toSet());
         final LocalDate start = LocalDate.parse("2020-01-01");
 
-        final Set<LocalDate> filterdDates =
+        final Set<LocalDate> filteredDates =
                 uniqueDates.stream().filter((d) -> d.compareTo(start) >= 0).collect(
                         Collectors.toSet());
 
-        final List<LocalDate> sortedDates = filterdDates.stream().sorted().toList();
+        final List<LocalDate> sortedDates = filteredDates.stream().sorted().toList();
 
-        final File outFile = new File("DeathsPerCapita.csv");
+        final File outFile = new File("DeathsPer" + unit + ".csv");
         final Writer w = new FileWriter(outFile);
         w.write("Week,");
         w.write(String.join(",", data.keySet()));
@@ -533,6 +534,35 @@ public class ObservedDeathVisualizer extends JFrame {
             }
 
             w.write('\n');
+        }
+
+        w.flush();
+        w.close();
+    }
+
+    private static void writeCSVTriples(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
+            throws IOException {
+        final int unit = 100000;
+        final LocalDate start = LocalDate.parse("2020-01-01");
+
+        final File outFile = new File("DeathsPer" + unit + "-triples.csv");
+        final Writer w = new FileWriter(outFile);
+        w.write("Region,Week,Ratio\n");
+
+        for (final Map.Entry<String, List<DataPoint>> e : data.entrySet()) {
+            final String region = e.getKey();
+            final double population = (double) census.get(region);
+            for (final DataPoint p : e.getValue()) {
+                if (p.date.compareTo(start) >= 0) {
+                    w.write(region);
+                    w.write(',');
+                    w.write(p.date.toString());
+                    w.write(',');
+                    double dpc = p.count / population * unit;
+                    w.write(String.format("%.2f", dpc));
+                    w.write('\n');
+                }
+            }
         }
 
         w.flush();
