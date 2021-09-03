@@ -21,14 +21,17 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Writer;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -37,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
@@ -90,7 +94,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private synchronized static void dumpStatistics(final Map<String, Integer> census, final String region,
                                                     final List<DataPoint> data) {
         final List<DataPoint> filteredOutRemainder =
-                data.stream().filter((p) -> p.date.getMonthValue() <= 8).collect(Collectors.toList());
+                data.stream().filter((p) -> p.date.getMonthValue() <= 8).toList();
         final List<DataPoint> d = data;
         final Map<Integer, Integer> deathsByYear = d.stream()
                 .collect(Collectors.groupingBy((p) -> p.date.getYear(), Collectors.summingInt((p) -> p.count)));
@@ -110,7 +114,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
 
-        System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).collect(Collectors.toList()));
+        System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).toList());
         System.err.printf("\n");
     }
 
@@ -440,27 +444,38 @@ public class ObservedDeathVisualizer extends JFrame {
         return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::getRegion, CensusLine::getPopulation));
     }
 
-    private static Map<String, Integer> mergeNYC(final Map<String, Integer> map) {
-        final Map<String, Integer> merged = new HashMap<>(map);
-        final Integer nyc = merged.remove("New York City");
-        final Integer ny = merged.remove("New York");
-        merged.put("New York", nyc + ny);
+    private static Map<String, List<DataPoint>> mergeNYC(final Map<String, List<DataPoint>> map) {
+        final Map<String, List<DataPoint>> merged = new HashMap<>(map);
+        final List<DataPoint> nyc = merged.remove("New York City");
+        final List<DataPoint> ny = merged.remove("New York");
+        final Map<LocalDate, List<DataPoint>> byDate =
+                Stream.concat(nyc.stream(), ny.stream()).collect(Collectors.groupingBy(DataPoint::getDate));
+        final List<DataPoint> reduced = new ArrayList<>();
+        for (final List<DataPoint> l : byDate.values()) {
+            final DataPoint first = l.get(0);
+            final DataPoint second = l.get(1);
+            final DataPoint n = new DataPoint(first.date, first.count + second.count);
+            reduced.add(n);
+        }
+
+        merged.put("New York", reduced.stream().sorted(Comparator.comparing(DataPoint::getDate)).toList());
         return merged;
     }
 
     private static void dumpPerCapitaStatistics(final Map<String, Integer> census,
                                                 final Map<String, List<DataPoint>> regionData) {
-        final LocalDate latestGoodDataDate = regionData.values().stream().map((v) -> lastGoodDataPoint(v))
+        final Map<String, List<DataPoint>> merged = mergeNYC(regionData);
+        final LocalDate latestGoodDataDate = merged.values().stream().map((v) -> lastGoodDataPoint(v))
                 .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get().date;
-        final Map<String, Optional<DataPoint>> lastGoodDataPoint = regionData.entrySet().stream().collect(
+        final Map<String, Optional<DataPoint>> lastGoodDataPoint = merged.entrySet().stream().collect(
                 Collectors.toMap((e) -> e.getKey(),
                         (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
                                 .findFirst()));
-        final Map<String, Integer> deathCount = mergeNYC(lastGoodDataPoint.entrySet().stream()
+        final Map<String, Integer> deathCount = lastGoodDataPoint.entrySet().stream()
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> {
                     final Optional<DataPoint> p = e.getValue();
                     return p.isPresent() ? p.get().count : 0;
-                })));
+                }));
 
         final Map<String, Double> deathPerCapita = deathCount.entrySet().stream()
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue() / (double) census.get(e.getKey())));
@@ -475,6 +490,50 @@ public class ObservedDeathVisualizer extends JFrame {
             System.err.printf("%d: %s %.2f (%s deaths in population of %s)\n", count++, e.getKey(), e.getValue() * unit,
                     NumberFormat.getInstance().format(deathCount.get(e.getKey())),
                     NumberFormat.getInstance().format(census.get(e.getKey())));
+        }
+
+        final Set<LocalDate> uniqueDates =
+                merged.values().stream().flatMap(List::stream).map((e) -> e.date).collect(Collectors.toSet());
+        final LocalDate start = LocalDate.parse("2020-01-01");
+
+        final Set<LocalDate> filterdDates =
+                uniqueDates.stream().filter((d) -> d.compareTo(start) >= 0).collect(
+                        Collectors.toSet());
+
+        final List<LocalDate> sortedDates = filterdDates.stream().sorted().toList();
+
+        final File outFile = new File("DeathsPerCapita.csv");
+        try {
+            final Writer w = new FileWriter(outFile);
+            w.write("Week,");
+            w.write(String.join(",", merged.keySet()));
+            w.write('\n');
+
+            for (final LocalDate date : sortedDates) {
+                w.write(date.toString());
+                w.write(',');
+
+                for (final String region : merged.keySet()) {
+                    final double population = (double) census.get(region);
+                    final Optional<DataPoint> d =
+                            merged.get(region).stream().filter((e) -> e.date.compareTo(date) == 0).findFirst();
+                    if (d.isPresent()) {
+                        double dpc = d.get().count / population * unit;
+                        w.write(String.format("%.2f", dpc));
+                    } else {
+                        w.write("0");
+                    }
+
+                    w.write(',');
+                }
+
+                w.write('\n');
+            }
+
+            w.flush();
+            w.close();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
