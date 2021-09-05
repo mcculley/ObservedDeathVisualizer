@@ -608,6 +608,26 @@ public class ObservedDeathVisualizer extends JFrame {
         return sortByValue(map, c);
     }
 
+    private static void dumpExcessDeaths(final Map<String, List<DataPoint>> regionData) throws IOException {
+        final File outFile = new File("ExcessDeaths.csv");
+        final Writer w = new FileWriter(outFile);
+        w.write("Region,Count\n");
+
+        final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
+
+        final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
+        System.out.println("Total U.S. Excess Deaths in 2020 and 2021: " +
+                NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
+        int rank = 1;
+        for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
+            System.out.println(rank++ + ": " + e.getKey() + " " + NumberFormat.getInstance().format(e.getValue()));
+            w.write(e.getKey() + "," + e.getValue() + "\n");
+        }
+
+        w.flush();
+        w.close();
+    }
+
     public static void main(final String[] args) throws IOException, CsvException {
         final Map<String, Integer> census = parseCensus();
         System.err.println("census=" + census);
@@ -649,15 +669,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         dumpPerCapitaStatistics(census, regionData);
         System.out.println();
-
-        final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
-
-        final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
-        System.out.println("Total U.S. Excess Deaths in 2020 and 2021: " +
-                NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
-        for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
-            System.out.println(e.getKey() + ": " + NumberFormat.getInstance().format(e.getValue()));
-        }
+        dumpExcessDeaths(regionData);
     }
 
 }
