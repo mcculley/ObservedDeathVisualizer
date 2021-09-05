@@ -581,14 +581,14 @@ public class ObservedDeathVisualizer extends JFrame {
         final LocalDate start = LocalDate.parse("2020-01-01");
 
         final File outFile = new File("DeathsPer" + unit + "-triples.csv");
-        try(final Writer w = new FileWriter(outFile)) {
+        try (final Writer w = new FileWriter(outFile)) {
             w.write("Region,Week,Ratio\n");
 
             for (final Map.Entry<String, List<DataPoint>> e : data.entrySet()) {
                 final String region = e.getKey();
                 final double population = (double) census.get(region);
                 for (final DataPoint p : e.getValue()) {
-                    if (p.date.compareTo(start) >= 0) {
+                    if (p.date.compareTo(start) >= 0 && p.count > 0) {
                         w.write(region);
                         w.write(',');
                         w.write(p.date.toString());
