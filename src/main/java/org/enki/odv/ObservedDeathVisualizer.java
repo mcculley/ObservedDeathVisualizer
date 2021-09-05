@@ -498,14 +498,11 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
-        final Predicate<DataPoint> is2019 = (p) -> p.date.getYear() == 2019;
-        final Map<String, Integer> maxDeaths2019 = regionData.entrySet().stream().collect(
-                Collectors.toMap((e) -> e.getKey(),
-                        (e) -> e.getValue().stream().filter(is2019).mapToInt((i) -> i.count).max().getAsInt()));
-        return regionData.entrySet().stream().collect(Collectors.toMap(
-                (e) -> e.getKey(),
+        return regionData.entrySet().stream().collect(Collectors.toMap((e) -> e.getKey(),
                 (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
-                        .mapToInt((i) -> i.count - maxDeaths2019.get(e.getKey())).sum()));
+                        .mapToInt((i) -> i.count -
+                                e.getValue().stream().filter((p) -> p.date.getYear() == 2019).mapToInt((j) -> j.count)
+                                        .max().getAsInt()).sum()));
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
