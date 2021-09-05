@@ -14,7 +14,6 @@ import javax.imageio.ImageIO;
 import javax.measure.Quantity;
 import javax.measure.quantity.Angle;
 import javax.swing.*;
-import javax.xml.crypto.Data;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
@@ -499,18 +498,14 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
-        final Map<String, Integer> r = new HashMap<>();
         final Predicate<DataPoint> is2019 = (p) -> p.date.getYear() == 2019;
         final Map<String, Integer> maxDeaths2019 = regionData.entrySet().stream().collect(
                 Collectors.toMap((e) -> e.getKey(),
                         (e) -> e.getValue().stream().filter(is2019).mapToInt((i) -> i.count).max().getAsInt()));
-        for (final String region : regionData.keySet()) {
-            final Stream<DataPoint> deathsAfter2019 =
-                    regionData.get(region).stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0);
-            r.put(region, deathsAfter2019.mapToInt((i) -> i.count - maxDeaths2019.get(region)).sum());
-        }
-
-        return r;
+        return regionData.entrySet().stream().collect(Collectors.toMap(
+                (e) -> e.getKey(),
+                (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
+                        .mapToInt((i) -> i.count - maxDeaths2019.get(e.getKey())).sum()));
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
