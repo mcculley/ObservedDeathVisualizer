@@ -545,34 +545,34 @@ public class ObservedDeathVisualizer extends JFrame {
         final List<LocalDate> sortedDates = filteredDates.stream().sorted().toList();
 
         final File outFile = new File("DeathsPer" + unit + ".csv");
-        final Writer w = new FileWriter(outFile);
-        w.write("Week,");
-        w.write(String.join(",", data.keySet()));
-        w.write('\n');
+        try (final Writer w = new FileWriter(outFile)) {
+            w.write("Week,");
+            w.write(String.join(",", data.keySet()));
+            w.write('\n');
 
-        for (final LocalDate date : sortedDates) {
-            w.write(date.toString());
-            w.write(',');
+            for (final LocalDate date : sortedDates) {
+                w.write(date.toString());
+                w.write(',');
 
-            for (final String region : data.keySet()) {
-                final double population = (double) census.get(region);
-                final Optional<DataPoint> d =
-                        data.get(region).stream().filter((e) -> e.date.compareTo(date) == 0).findFirst();
-                if (d.isPresent()) {
-                    double dpc = d.get().count / population * unit;
-                    w.write(String.format("%.2f", dpc));
-                } else {
-                    w.write("0");
+                for (final String region : data.keySet()) {
+                    final double population = (double) census.get(region);
+                    final Optional<DataPoint> d =
+                            data.get(region).stream().filter((e) -> e.date.compareTo(date) == 0).findFirst();
+                    if (d.isPresent()) {
+                        double dpc = d.get().count / population * unit;
+                        w.write(String.format("%.2f", dpc));
+                    } else {
+                        w.write("0");
+                    }
+
+                    w.write(',');
                 }
 
-                w.write(',');
+                w.write('\n');
             }
 
-            w.write('\n');
+            w.flush();
         }
-
-        w.flush();
-        w.close();
     }
 
     private static void writeCSVTriples(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
@@ -581,27 +581,27 @@ public class ObservedDeathVisualizer extends JFrame {
         final LocalDate start = LocalDate.parse("2020-01-01");
 
         final File outFile = new File("DeathsPer" + unit + "-triples.csv");
-        final Writer w = new FileWriter(outFile);
-        w.write("Region,Week,Ratio\n");
+        try(final Writer w = new FileWriter(outFile)) {
+            w.write("Region,Week,Ratio\n");
 
-        for (final Map.Entry<String, List<DataPoint>> e : data.entrySet()) {
-            final String region = e.getKey();
-            final double population = (double) census.get(region);
-            for (final DataPoint p : e.getValue()) {
-                if (p.date.compareTo(start) >= 0) {
-                    w.write(region);
-                    w.write(',');
-                    w.write(p.date.toString());
-                    w.write(',');
-                    double dpc = p.count / population * unit;
-                    w.write(String.format("%.2f", dpc));
-                    w.write('\n');
+            for (final Map.Entry<String, List<DataPoint>> e : data.entrySet()) {
+                final String region = e.getKey();
+                final double population = (double) census.get(region);
+                for (final DataPoint p : e.getValue()) {
+                    if (p.date.compareTo(start) >= 0) {
+                        w.write(region);
+                        w.write(',');
+                        w.write(p.date.toString());
+                        w.write(',');
+                        double dpc = p.count / population * unit;
+                        w.write(String.format("%.2f", dpc));
+                        w.write('\n');
+                    }
                 }
             }
-        }
 
-        w.flush();
-        w.close();
+            w.flush();
+        }
     }
 
     private static <T, K, U> Collector<T, ?, Map<K, U>> toLinkedHashMap(
@@ -624,22 +624,22 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static void dumpExcessDeaths(final Map<String, List<DataPoint>> regionData) throws IOException {
         final File outFile = new File("ExcessDeaths.csv");
-        final Writer w = new FileWriter(outFile);
-        w.write("Region,Count\n");
+        try (final Writer w = new FileWriter(outFile)) {
+            w.write("Region,Count\n");
 
-        final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
+            final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
-        final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
-        System.out.println("Total U.S. excess deaths (lower estimate) in 2020 and 2021: " +
-                NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
-        int rank = 1;
-        for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
-            System.out.println(rank++ + ": " + e.getKey() + " " + NumberFormat.getInstance().format(e.getValue()));
-            w.write(e.getKey() + "," + e.getValue() + "\n");
+            final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
+            System.out.println("Total U.S. excess deaths (lower estimate) in 2020 and 2021: " +
+                    NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
+            int rank = 1;
+            for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
+                System.out.println(rank++ + ": " + e.getKey() + " " + NumberFormat.getInstance().format(e.getValue()));
+                w.write(e.getKey() + "," + e.getValue() + "\n");
+            }
+
+            w.flush();
         }
-
-        w.flush();
-        w.close();
     }
 
     public static void main(final String[] args) throws IOException, CsvException {
