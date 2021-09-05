@@ -497,6 +497,16 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
+    /**
+     * Compute the excess deaths in 2020 and 2021 so far.
+     * <p>
+     * This uses a very conservative way of computing excess deaths. It finds the maximum number of deaths per week on
+     * 2019 for every region. Then it subtracts the actual death count for every week in 2020 and 2021 and adds them
+     * up.
+     *
+     * @param regionData a Map of Lists of death counts by region
+     * @return a Map of excess death counts by region
+     */
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
         return regionData.entrySet().stream().collect(Collectors.toMap((e) -> e.getKey(),
                 (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
