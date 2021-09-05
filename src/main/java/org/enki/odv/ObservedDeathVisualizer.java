@@ -630,7 +630,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
         final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
-        System.out.println("Total U.S. Excess Deaths in 2020 and 2021: " +
+        System.out.println("Total U.S. excess deaths (lower estimate) in 2020 and 2021: " +
                 NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
         int rank = 1;
         for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
