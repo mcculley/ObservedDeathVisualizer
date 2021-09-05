@@ -4,6 +4,14 @@
     </head>
     <body>
         <h1>Visualizing Observed Deaths</h1>
+
+        <h2>Per Capita Deaths</h2>
+        <p>This graph shows deaths, from all causes, broken up by state and ranked per 100,000 people (according to the 2020 census). It is interactive. Click around to drill down into the data.</p>
+
+        <iframe title="[ Deaths, All Causes, Per 100,000 ]" aria-label="Interactive line chart" id="datawrapper-chart-zaBDz" src="https://datawrapper.dwcdn.net/zaBDz/2/" scrolling="no" frameborder="0" style="width: 0; min-width: 100% !important; border: none;" height="400"></iframe><script type="text/javascript">!function(){"use strict";window.addEventListener("message",(function(e){if(void 0!==e.data["datawrapper-height"]){var t=document.querySelectorAll("iframe");for(var a in e.data["datawrapper-height"])for(var r=0;r<t.length;r++){if(t[r].contentWindow===e.source)t[r].style.height=e.data["datawrapper-height"][a]+"px"}}}))}();
+        </script>
+
+        <h2>Polar Area Diagram</h2>
         <p>
             This is a visualization, using a <a href="https://en.wikipedia.org/wiki/Pie_chart#Polar_area_diagram">polar area diagram</a>, of the total observed deaths for every week using data published by
             <a href="https://www.cdc.gov/nchs/nvss/vsrr/covid19/excess_deaths.htm">
@@ -24,7 +32,7 @@
             the weeks prior. This turned out to be less useful than expected because the under-reporting was well within
             one standard deviation for many regions.)
         </p>
-        <p>Source code for the tool that generates these graphs is available at
+        <p>The code that drives these graphs runs weekly, so you can revisit this page to see the latest data. Source code is available at
             <a href="https://github.com/mcculley/ObservedDeathVisualizer">https://github.com/mcculley/ObservedDeathVisualizer</a>.
             This was built by
             <a href="https://linkedin.com/in/mcculley">Gene McCulley</a>.
