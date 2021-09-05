@@ -498,12 +498,18 @@ public class ObservedDeathVisualizer extends JFrame {
 
     }
 
-    private static int excessDeaths(final List<DataPoint> regionData) {
-        final Stream<DataPoint> deaths2019 = regionData.stream().filter((i) -> i.date.getYear() == 2019);
-        final int maxDeathsPerWeek2019 = deaths2019.mapToInt((i) -> i.count).max().getAsInt();
-        final Stream<DataPoint> deathsAfter2019 =
-                regionData.stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0);
-        return deathsAfter2019.mapToInt((i) -> i.count - maxDeathsPerWeek2019).sum();
+    private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
+        final Map<String, Integer> r = new HashMap<>();
+        for (final String region : regionData.keySet()) {
+            final Stream<DataPoint> deaths2019 =
+                    regionData.get(region).stream().filter((i) -> i.date.getYear() == 2019);
+            final int maxDeathsPerWeek2019 = deaths2019.mapToInt((i) -> i.count).max().getAsInt();
+            final Stream<DataPoint> deathsAfter2019 =
+                    regionData.get(region).stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0);
+            r.put(region, deathsAfter2019.mapToInt((i) -> i.count - maxDeathsPerWeek2019).sum());
+        }
+
+        return r;
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
@@ -637,13 +643,9 @@ public class ObservedDeathVisualizer extends JFrame {
         });
 
         dumpPerCapitaStatistics(census, regionData);
+        System.out.println();
 
-        final Map<String, Integer> excessDeathsByRegion = new HashMap<>();
-        for (final String region : regionData.keySet()) {
-            final int excessDeaths = excessDeaths(regionData.get(region));
-            excessDeathsByRegion.put(region, excessDeaths);
-            System.out.println();
-        }
+        final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
         final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
         System.out.println("Excess Deaths:");
