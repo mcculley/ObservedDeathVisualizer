@@ -503,6 +503,8 @@ public class ObservedDeathVisualizer extends JFrame {
      * This uses a very conservative way of computing excess deaths. It finds the maximum number of deaths per week on
      * 2019 for every region. Then it subtracts the actual death count for every week in 2020 and 2021 and adds them
      * up.
+     * <p>
+     * A more careful analysis by week would show a larger number for many regions/states.
      *
      * @param regionData a Map of Lists of death counts by region
      * @return a Map of excess death counts by region
@@ -651,9 +653,10 @@ public class ObservedDeathVisualizer extends JFrame {
         final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
         final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
-        System.out.println("Excess Deaths:");
+        System.out.println("Total U.S. Excess Deaths in 2020 and 2021: " +
+                NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
         for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
-            System.out.println(e.getKey() + ": " + e.getValue());
+            System.out.println(e.getKey() + ": " + NumberFormat.getInstance().format(e.getValue()));
         }
     }
 
