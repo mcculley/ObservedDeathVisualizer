@@ -344,10 +344,17 @@ public class ObservedDeathVisualizer extends JFrame {
 
         public final LocalDate date;
         public final int count;
+        public final int averageExpectedCount;
+        public final int excessLowerEstimate;
+        public final int excessHigherEstimate;
 
-        public DataPoint(final LocalDate date, final int count) {
+        public DataPoint(final LocalDate date, final int count, final int averageExpectedCount,
+                         final int excessLowerEstimate, final int excessHigherEstimate) {
             this.date = date;
             this.count = count;
+            this.averageExpectedCount = averageExpectedCount;
+            this.excessLowerEstimate = excessLowerEstimate;
+            this.excessHigherEstimate = excessHigherEstimate;
         }
 
         public LocalDate getDate() {
@@ -363,6 +370,9 @@ public class ObservedDeathVisualizer extends JFrame {
             return "DataPoint{" +
                     "date=" + date +
                     ", count=" + count +
+                    ", averageExpectedCount=" + averageExpectedCount +
+                    ", excessLowerEstimate=" + excessLowerEstimate +
+                    ", excessHigherEstimate=" + excessHigherEstimate +
                     '}';
         }
 
@@ -374,15 +384,24 @@ public class ObservedDeathVisualizer extends JFrame {
         public final String type;
         public final int observedNumber;
         public final LocalDate weekEndingDate;
+        public final int averageExpectedCount;
+        public final int excessLowerEstimate;
+        public final int excessHigherEstimate;
 
         public DataLine(@CSVParser.Column(name = "State") final String state,
                         @CSVParser.Column(name = "Type") final String type,
                         @CSVParser.Column(name = "Observed Number") final int observedNumber,
-                        @CSVParser.Column(name = "Week Ending Date") final LocalDate weekEndingDate) {
+                        @CSVParser.Column(name = "Week Ending Date") final LocalDate weekEndingDate,
+                        @CSVParser.Column(name = "Average Expected Count") final int averageExpectedCount,
+                        @CSVParser.Column(name = "Excess Lower Estimate") final int excessLowerEstimate,
+                        @CSVParser.Column(name = "Excess Higher Estimate") final int excessHigherEstimate) {
             this.state = state;
             this.type = type;
             this.observedNumber = observedNumber;
             this.weekEndingDate = weekEndingDate;
+            this.averageExpectedCount = averageExpectedCount;
+            this.excessLowerEstimate = excessLowerEstimate;
+            this.excessHigherEstimate = excessHigherEstimate;
         }
 
     }
@@ -410,13 +429,11 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        // Special parsing for the "Observed Number" column: It sometimes contains empty strings. Set those to 0 and
-        // filter them out.
-        final Map<String, Function<String, Object>> columnParsers =
-                Map.of("Observed Number", (s) -> s.isEmpty() ? 0 : Integer.parseInt(s));
+        final Map<Class, Function<String, Object>> typeParsers =
+                Map.of(int.class, (s) -> s.isEmpty() ? 0 : Integer.parseInt(s));
 
         final CSVParser<DataLine> p =
-                new CSVParser.Builder<>(DataLine.class, header).withColumnParsers(columnParsers).build();
+                new CSVParser.Builder<>(DataLine.class, header).withTypeParsers(typeParsers).build();
 
         // Skip rows marked "Predicted". We want only the observed deaths.
         final Predicate<DataLine> unweighted = (line) -> !line.type.startsWith("Predicted");
@@ -424,7 +441,8 @@ public class ObservedDeathVisualizer extends JFrame {
         final Predicate<DataLine> hasCount = (line) -> line.observedNumber > 0;
 
         final Function<DataLine, DataPoint> lineToDataPoint =
-                (line) -> new DataPoint(line.weekEndingDate, line.observedNumber);
+                (line) -> new DataPoint(line.weekEndingDate, line.observedNumber, line.averageExpectedCount,
+                        line.excessLowerEstimate, line.excessHigherEstimate);
 
         final Function<DataLine, String> regionClassifier = (line) -> line.state;
         final Map<String, List<DataPoint>> regions =
@@ -454,7 +472,9 @@ public class ObservedDeathVisualizer extends JFrame {
         for (final List<DataPoint> l : byDate.values()) {
             final DataPoint first = l.get(0);
             final DataPoint second = l.get(1);
-            final DataPoint n = new DataPoint(first.date, first.count + second.count);
+            final DataPoint n = new DataPoint(first.date, first.count + second.count, 0,
+                    first.excessLowerEstimate + second.excessLowerEstimate, first.excessHigherEstimate +
+                    second.excessHigherEstimate);
             reduced.add(n);
         }
 
@@ -500,11 +520,7 @@ public class ObservedDeathVisualizer extends JFrame {
     /**
      * Compute the excess deaths in 2020 and 2021 so far.
      * <p>
-     * This uses a very conservative way of computing excess deaths. It finds the maximum number of deaths per week on
-     * 2019 for every region. Then it subtracts the actual death count for every week in 2020 and 2021 and adds them
-     * up.
-     * <p>
-     * A more careful analysis by week would show a larger number for many regions/states.
+     * This uses the CDC data field "Excess Lower Estimate".
      *
      * @param regionData a Map of Lists of death counts by region
      * @return a Map of excess death counts by region
@@ -512,9 +528,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
         return regionData.entrySet().stream().collect(Collectors.toMap((e) -> e.getKey(),
                 (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
-                        .mapToInt((i) -> i.count -
-                                e.getValue().stream().filter((p) -> p.date.getYear() == 2019).mapToInt((j) -> j.count)
-                                        .max().getAsInt()).sum()));
+                        .mapToInt((i) -> i.excessLowerEstimate).sum()));
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
