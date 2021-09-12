@@ -71,6 +71,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private final Duration duration;
     private final int maxCount;
     private final Map<Integer, Color> yearColors = new HashMap<>();
+    private final Color incompleteDataColor = Color.BLACK;
 
     public ObservedDeathVisualizer(final Map<String, Integer> census, final String region, final List<DataPoint> data) {
         super(region);
@@ -253,6 +254,10 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private Color getColor(final LocalDate date) {
         final float alpha = date.compareTo(incompleteDataDate) >= 0 ? 0.3f : 1;
+        if (date.compareTo(incompleteDataDate) >= 0) {
+            return incompleteDataColor;
+        }
+
         final Color base = yearColors.get(date.getYear());
         return ColorUtilities.setAlpha(base, alpha);
     }
