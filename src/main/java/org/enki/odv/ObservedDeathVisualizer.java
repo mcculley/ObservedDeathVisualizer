@@ -630,15 +630,37 @@ public class ObservedDeathVisualizer extends JFrame {
             final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
             final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
-            System.out.println("Total U.S. excess deaths (lower estimate) in 2020 and 2021: " +
+            System.out.println("Cumulative U.S. excess deaths (lower estimate) in 2020 and 2021: " +
                     NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
             int rank = 1;
             for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
                 System.out.println(rank++ + ": " + e.getKey() + " " + NumberFormat.getInstance().format(e.getValue()));
                 w.write(e.getKey() + "," + e.getValue() + "\n");
             }
+        }
+    }
 
-            w.flush();
+    private static void dumpExcessDeathsPerCapitaCumulative(final Map<String, Integer> census,
+                                                            final Map<String, List<DataPoint>> regionData)
+            throws IOException {
+        final int unit = 100000;
+        final File outFile = new File("ExcessDeathsCumulativePer" + unit + ".csv");
+        try (final Writer w = new FileWriter(outFile)) {
+            w.write("Region,Rate\n");
+
+            final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
+            final Map<String, Double> perCapitaDeathsPerRegion = new HashMap<>();
+            excessDeathsByRegion.entrySet().forEach((e) -> perCapitaDeathsPerRegion.put(e.getKey(),
+                    (double) e.getValue() / census.get(e.getKey()) * unit));
+
+            final Map<String, Double> sortedByDeaths = sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder());
+            System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
+                    NumberFormat.getInstance().format(unit), sortedByDeaths.remove("United States"));
+            int rank = 1;
+            for (final Map.Entry<String, Double> e : sortedByDeaths.entrySet()) {
+                System.out.printf("%d: %s %.2f\n", rank++, e.getKey(), e.getValue());
+                w.write(e.getKey() + "," + e.getValue() + "\n");
+            }
         }
     }
 
@@ -684,6 +706,8 @@ public class ObservedDeathVisualizer extends JFrame {
         dumpPerCapitaStatistics(census, regionData);
         System.out.println();
         dumpExcessDeaths(regionData);
+        System.out.println();
+        dumpExcessDeathsPerCapitaCumulative(census, mergeNYC(regionData));
     }
 
 }
