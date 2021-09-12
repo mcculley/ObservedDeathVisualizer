@@ -649,9 +649,8 @@ public class ObservedDeathVisualizer extends JFrame {
             w.write("Region,Rate\n");
 
             final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
-            final Map<String, Double> perCapitaDeathsPerRegion = new HashMap<>();
-            excessDeathsByRegion.entrySet().forEach((e) -> perCapitaDeathsPerRegion.put(e.getKey(),
-                    (double) e.getValue() / census.get(e.getKey()) * unit));
+            final Map<String, Double> perCapitaDeathsPerRegion = excessDeathsByRegion.entrySet().stream().collect(
+                    Collectors.toMap((e) -> e.getKey(), (e) -> (double) e.getValue() / census.get(e.getKey()) * unit));
 
             final Map<String, Double> sortedByDeaths = sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder());
             System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
