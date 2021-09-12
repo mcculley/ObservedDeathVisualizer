@@ -33,6 +33,7 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -613,8 +614,9 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map, final Comparator<V> c) {
-        return map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
-                .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+        return Collections.unmodifiableMap(
+                map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
+                        .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue())));
     }
 
     private static <K, V> Map<K, V> sortByValue(final Map<K, V> map) {
@@ -629,7 +631,8 @@ public class ObservedDeathVisualizer extends JFrame {
 
             final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
-            final Map<String, Integer> sortedByDeaths = sortByValue(excessDeathsByRegion, Comparator.reverseOrder());
+            final Map<String, Integer> sortedByDeaths =
+                    new LinkedHashMap<>(sortByValue(excessDeathsByRegion, Comparator.reverseOrder()));
             System.out.println("Cumulative U.S. excess deaths (lower estimate) in 2020 and 2021: " +
                     NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
             int rank = 1;
@@ -652,7 +655,8 @@ public class ObservedDeathVisualizer extends JFrame {
             final Map<String, Double> perCapitaDeathsPerRegion = excessDeathsByRegion.entrySet().stream().collect(
                     Collectors.toMap((e) -> e.getKey(), (e) -> (double) e.getValue() / census.get(e.getKey()) * unit));
 
-            final Map<String, Double> sortedByDeaths = sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder());
+            final Map<String, Double> sortedByDeaths =
+                    new LinkedHashMap<>(sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder()));
             System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
                     NumberFormat.getInstance().format(unit), sortedByDeaths.remove("United States"));
             int rank = 1;
