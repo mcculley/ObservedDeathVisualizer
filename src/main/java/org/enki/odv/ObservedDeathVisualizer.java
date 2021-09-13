@@ -350,32 +350,13 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
 
-    public static class DataLine {
-
-        public final String state;
-        public final String type;
-        public final int observedNumber;
-        public final LocalDate weekEndingDate;
-        public final int averageExpectedCount;
-        public final int excessLowerEstimate;
-        public final int excessHigherEstimate;
-
-        public DataLine(@CSVParser.Column(name = "State") final String state,
-                        @CSVParser.Column(name = "Type") final String type,
-                        @CSVParser.Column(name = "Observed Number") final int observedNumber,
-                        @CSVParser.Column(name = "Week Ending Date") final LocalDate weekEndingDate,
-                        @CSVParser.Column(name = "Average Expected Count") final int averageExpectedCount,
-                        @CSVParser.Column(name = "Excess Lower Estimate") final int excessLowerEstimate,
-                        @CSVParser.Column(name = "Excess Higher Estimate") final int excessHigherEstimate) {
-            this.state = state;
-            this.type = type;
-            this.observedNumber = observedNumber;
-            this.weekEndingDate = weekEndingDate;
-            this.averageExpectedCount = averageExpectedCount;
-            this.excessLowerEstimate = excessLowerEstimate;
-            this.excessHigherEstimate = excessHigherEstimate;
-        }
-
+    public static record DataLine(@CSVParser.Column(name = "State")  String state,
+                                  @CSVParser.Column(name = "Type")  String type,
+                                  @CSVParser.Column(name = "Observed Number")  int observedNumber,
+                                  @CSVParser.Column(name = "Week Ending Date")  LocalDate weekEndingDate,
+                                  @CSVParser.Column(name = "Average Expected Count")  int averageExpectedCount,
+                                  @CSVParser.Column(name = "Excess Lower Estimate")  int excessLowerEstimate,
+                                  @CSVParser.Column(name = "Excess Higher Estimate")  int excessHigherEstimate) {
     }
 
     public static class CensusLine {
