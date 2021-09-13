@@ -6,6 +6,7 @@ import com.opencsv.CSVReaderBuilder;
 import com.opencsv.exceptions.CsvException;
 import org.enki.CSVParser;
 import org.enki.CacheUtilities;
+import org.enki.Collections;
 import org.enki.ColorUtilities;
 import org.enki.PolarCoordinate;
 import tech.units.indriya.quantity.Quantities;
@@ -33,26 +34,22 @@ import java.time.MonthDay;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.PI;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
+import static org.enki.Collections.toLinkedHashMap;
 import static tech.units.indriya.unit.Units.RADIAN;
 
 /**
@@ -508,8 +505,9 @@ public class ObservedDeathVisualizer extends JFrame {
         final Map<String, Double> deathPerCapita = deathCount.entrySet().stream()
                 .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue() / (double) census.get(e.getKey())));
 
-        final Map<String, Double> deathPerCapitaSorted = sortByValue(deathPerCapita, Comparator.reverseOrder()).stream()
-                .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+        final Map<String, Double> deathPerCapitaSorted =
+                Collections.sortByValue(deathPerCapita, Comparator.reverseOrder()).stream()
+                        .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
 
         final int unit = 100000;
         System.out.printf("%s deaths per %s people per week\n", latestGoodDataDate,
@@ -613,25 +611,6 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    private static <T, K, U> Collector<T, ?, Map<K, U>> toLinkedHashMap(
-            final Function<? super T, ? extends K> keyMapper,
-            final Function<? super T, ? extends U> valueMapper) {
-        return Collectors.toMap(keyMapper, valueMapper, (u, v) -> {
-            throw new IllegalStateException(String.format("Duplicate key %s", u));
-        }, LinkedHashMap::new);
-    }
-
-    private static <K, V> Collection<Entry<K, V>> sortByValue(final Map<K, V> map, final Comparator<V> c) {
-        return Collections.unmodifiableCollection(
-                map.entrySet().stream().sorted((o1, o2) -> c.compare(o1.getValue(), o2.getValue()))
-                        .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue())).entrySet());
-    }
-
-    private static <K, V> Collection<Entry<K, V>> sortByValue(final Map<K, V> map) {
-        final Comparator<V> c = (Comparator<V>) Comparator.naturalOrder();
-        return sortByValue(map, c);
-    }
-
     private static void dumpExcessDeaths(final Map<String, List<DataPoint>> regionData) throws IOException {
         final File outFile = new File("ExcessDeaths.csv");
         try (final Writer w = new FileWriter(outFile)) {
@@ -640,8 +619,8 @@ public class ObservedDeathVisualizer extends JFrame {
             final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
 
             final Map<String, Integer> sortedByDeaths =
-                    sortByValue(excessDeathsByRegion, Comparator.reverseOrder()).stream()
-                            .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+                    Collections.sortByValue(excessDeathsByRegion, Comparator.reverseOrder()).stream()
+                            .collect(Collections.toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
             System.out.println("Cumulative U.S. excess deaths (lower estimate) in 2020 and 2021: " +
                     NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
             int rank = 1;
@@ -665,8 +644,8 @@ public class ObservedDeathVisualizer extends JFrame {
                     Collectors.toMap((e) -> e.getKey(), (e) -> (double) e.getValue() / census.get(e.getKey()) * unit));
 
             final Map<String, Double> sortedByDeaths =
-                    sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder()).stream()
-                            .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+                    Collections.sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder()).stream()
+                            .collect(Collections.toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
             System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
                     NumberFormat.getInstance().format(unit), sortedByDeaths.remove("United States"));
             int rank = 1;
