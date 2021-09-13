@@ -350,34 +350,17 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
 
-    public static record DataLine(@CSVParser.Column(name = "State")  String state,
-                                  @CSVParser.Column(name = "Type")  String type,
-                                  @CSVParser.Column(name = "Observed Number")  int observedNumber,
-                                  @CSVParser.Column(name = "Week Ending Date")  LocalDate weekEndingDate,
-                                  @CSVParser.Column(name = "Average Expected Count")  int averageExpectedCount,
-                                  @CSVParser.Column(name = "Excess Lower Estimate")  int excessLowerEstimate,
-                                  @CSVParser.Column(name = "Excess Higher Estimate")  int excessHigherEstimate) {
+    public static record DataLine(@CSVParser.Column(name = "State") String state,
+                                  @CSVParser.Column(name = "Type") String type,
+                                  @CSVParser.Column(name = "Observed Number") int observedNumber,
+                                  @CSVParser.Column(name = "Week Ending Date") LocalDate weekEndingDate,
+                                  @CSVParser.Column(name = "Average Expected Count") int averageExpectedCount,
+                                  @CSVParser.Column(name = "Excess Lower Estimate") int excessLowerEstimate,
+                                  @CSVParser.Column(name = "Excess Higher Estimate") int excessHigherEstimate) {
     }
 
-    public static class CensusLine {
-
-        public final String region;
-        public final int population;
-
-        public CensusLine(@CSVParser.Column(name = "Region") final String region,
-                          @CSVParser.Column(name = "Population") final int population) {
-            this.region = region;
-            this.population = population;
-        }
-
-        public String getRegion() {
-            return region;
-        }
-
-        public int getPopulation() {
-            return population;
-        }
-
+    public static record CensusLine(@CSVParser.Column(name = "Region") String region,
+                                    @CSVParser.Column(name = "Population") int population) {
     }
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
@@ -412,7 +395,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final List<String[]> censusLines = censusCSVReader.readAll();
         final String[] censusHeader = censusLines.remove(0);
         final CSVParser<CensusLine> p = new CSVParser.Builder<>(CensusLine.class, censusHeader).build();
-        return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::getRegion, CensusLine::getPopulation));
+        return censusLines.stream().map(p).collect(Collectors.toMap(CensusLine::region, CensusLine::population));
     }
 
     private static Map<String, List<DataPoint>> mergeNYC(final Map<String, List<DataPoint>> map) {
