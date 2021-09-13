@@ -121,7 +121,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static final DataPoint lastGoodDataPoint(final List<DataPoint> l) {
         return l.stream().filter((e) -> e.date.compareTo(incompleteDataDate) <= 0)
-                .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get();
+                .sorted(Comparator.comparing(DataPoint::date).reversed()).findFirst().get();
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -345,43 +345,10 @@ public class ObservedDeathVisualizer extends JFrame {
         plot(g2d);
     }
 
-    public static class DataPoint {
-
-        public final LocalDate date;
-        public final int count;
-        public final int averageExpectedCount;
-        public final int excessLowerEstimate;
-        public final int excessHigherEstimate;
-
-        public DataPoint(final LocalDate date, final int count, final int averageExpectedCount,
-                         final int excessLowerEstimate, final int excessHigherEstimate) {
-            this.date = date;
-            this.count = count;
-            this.averageExpectedCount = averageExpectedCount;
-            this.excessLowerEstimate = excessLowerEstimate;
-            this.excessHigherEstimate = excessHigherEstimate;
-        }
-
-        public LocalDate getDate() {
-            return date;
-        }
-
-        public int getCount() {
-            return count;
-        }
-
-        @Override
-        public String toString() {
-            return "DataPoint{" +
-                    "date=" + date +
-                    ", count=" + count +
-                    ", averageExpectedCount=" + averageExpectedCount +
-                    ", excessLowerEstimate=" + excessLowerEstimate +
-                    ", excessHigherEstimate=" + excessHigherEstimate +
-                    '}';
-        }
-
+    public static record DataPoint(LocalDate date, int count, int averageExpectedCount, int excessLowerEstimate,
+                                   int excessHigherEstimate) {
     }
+
 
     public static class DataLine {
 
@@ -472,7 +439,7 @@ public class ObservedDeathVisualizer extends JFrame {
         final List<DataPoint> nyc = merged.remove("New York City");
         final List<DataPoint> ny = merged.remove("New York");
         final Map<LocalDate, List<DataPoint>> byDate =
-                Stream.concat(nyc.stream(), ny.stream()).collect(Collectors.groupingBy(DataPoint::getDate));
+                Stream.concat(nyc.stream(), ny.stream()).collect(Collectors.groupingBy(DataPoint::date));
         final List<DataPoint> reduced = new ArrayList<>();
         for (final List<DataPoint> l : byDate.values()) {
             final DataPoint first = l.get(0);
@@ -483,7 +450,7 @@ public class ObservedDeathVisualizer extends JFrame {
             reduced.add(n);
         }
 
-        merged.put("New York", reduced.stream().sorted(Comparator.comparing(DataPoint::getDate)).toList());
+        merged.put("New York", reduced.stream().sorted(Comparator.comparing(DataPoint::date)).toList());
         return merged;
     }
 
@@ -491,7 +458,7 @@ public class ObservedDeathVisualizer extends JFrame {
                                                 final Map<String, List<DataPoint>> regionData) throws IOException {
         final Map<String, List<DataPoint>> merged = mergeNYC(regionData);
         final LocalDate latestGoodDataDate = merged.values().stream().map((v) -> lastGoodDataPoint(v))
-                .sorted(Comparator.comparing(DataPoint::getDate).reversed()).findFirst().get().date;
+                .sorted(Comparator.comparing(DataPoint::date).reversed()).findFirst().get().date;
         final Map<String, Optional<DataPoint>> lastGoodDataPoint = merged.entrySet().stream().collect(
                 Collectors.toMap((e) -> e.getKey(),
                         (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
