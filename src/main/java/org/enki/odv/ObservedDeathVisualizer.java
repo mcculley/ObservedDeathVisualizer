@@ -108,9 +108,8 @@ public class ObservedDeathVisualizer extends JFrame {
 
         System.err.printf(region + ":\n");
         System.err.printf("2017 %d\n", deathsByYear.get(2017));
-        change.entrySet()
-                .forEach((e) -> System.err.printf("%d %d %.2f%%\n", e.getKey(), deathsByYear.get(e.getKey()),
-                        e.getValue() * 100));
+        change.forEach((key, value) -> System.err.printf("%d %d %.2f%%\n", key, deathsByYear.get(key),
+                value * 100));
 
         final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
@@ -119,9 +118,9 @@ public class ObservedDeathVisualizer extends JFrame {
         System.err.printf("\n");
     }
 
-    private static final DataPoint lastGoodDataPoint(final List<DataPoint> l) {
+    private static DataPoint lastGoodDataPoint(final List<DataPoint> l) {
         return l.stream().filter((e) -> e.date.compareTo(incompleteDataDate) <= 0)
-                .sorted(Comparator.comparing(DataPoint::date).reversed()).findFirst().get();
+                .max(Comparator.comparing(DataPoint::date)).get();
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -247,7 +246,7 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
-    private static LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
+    private static final LocalDate incompleteDataDate = LocalDate.now().minusDays(6 * 7);
 
     private Color getColor(final LocalDate date) {
         final float alpha = date.compareTo(incompleteDataDate) >= 0 ? 0.3f : 1;
@@ -418,24 +417,24 @@ public class ObservedDeathVisualizer extends JFrame {
     private static void dumpPerCapitaStatistics(final Map<String, Integer> census,
                                                 final Map<String, List<DataPoint>> regionData) throws IOException {
         final Map<String, List<DataPoint>> merged = mergeNYC(regionData);
-        final LocalDate latestGoodDataDate = merged.values().stream().map((v) -> lastGoodDataPoint(v))
-                .sorted(Comparator.comparing(DataPoint::date).reversed()).findFirst().get().date;
+        final LocalDate latestGoodDataDate = merged.values().stream().map(ObservedDeathVisualizer::lastGoodDataPoint)
+                .max(Comparator.comparing(DataPoint::date)).get().date;
         final Map<String, Optional<DataPoint>> lastGoodDataPoint = merged.entrySet().stream().collect(
-                Collectors.toMap((e) -> e.getKey(),
+                Collectors.toMap(Map.Entry::getKey,
                         (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
                                 .findFirst()));
         final Map<String, Integer> deathCount = lastGoodDataPoint.entrySet().stream()
-                .collect(Collectors.toMap((e) -> e.getKey(), (e) -> {
+                .collect(Collectors.toMap(Map.Entry::getKey, (e) -> {
                     final Optional<DataPoint> p = e.getValue();
-                    return p.isPresent() ? p.get().count : 0;
+                    return p.map(dataPoint -> dataPoint.count).orElse(0);
                 }));
 
         final Map<String, Double> deathPerCapita = deathCount.entrySet().stream()
-                .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue() / (double) census.get(e.getKey())));
+                .collect(Collectors.toMap(Map.Entry::getKey, (e) -> e.getValue() / (double) census.get(e.getKey())));
 
         final Map<String, Double> deathPerCapitaSorted =
                 Collections.sortByValue(deathPerCapita, Comparator.reverseOrder()).stream()
-                        .collect(toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+                        .collect(toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue));
 
         final int unit = 100000;
         System.out.printf("%s deaths per %s people per week\n", latestGoodDataDate,
@@ -461,7 +460,7 @@ public class ObservedDeathVisualizer extends JFrame {
      * @return a Map of excess death counts by region
      */
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
-        return regionData.entrySet().stream().collect(Collectors.toMap((e) -> e.getKey(),
+        return regionData.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
                 (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
                         .mapToInt((i) -> i.excessEstimate).sum()));
     }
@@ -548,7 +547,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
             final Map<String, Integer> sortedByDeaths =
                     Collections.sortByValue(excessDeathsByRegion, Comparator.reverseOrder()).stream()
-                            .collect(Collections.toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+                            .collect(Collections.toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue));
             System.out.println("Cumulative U.S. excess deaths (lower estimate) in 2020 and 2021: " +
                     NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
             int rank = 1;
@@ -569,11 +568,11 @@ public class ObservedDeathVisualizer extends JFrame {
 
             final Map<String, Integer> excessDeathsByRegion = excessDeaths(regionData);
             final Map<String, Double> perCapitaDeathsPerRegion = excessDeathsByRegion.entrySet().stream().collect(
-                    Collectors.toMap((e) -> e.getKey(), (e) -> (double) e.getValue() / census.get(e.getKey()) * unit));
+                    Collectors.toMap(Map.Entry::getKey, (e) -> (double) e.getValue() / census.get(e.getKey()) * unit));
 
             final Map<String, Double> sortedByDeaths =
                     Collections.sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder()).stream()
-                            .collect(Collections.toLinkedHashMap((e) -> e.getKey(), (e) -> e.getValue()));
+                            .collect(Collections.toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue));
             System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
                     NumberFormat.getInstance().format(unit), sortedByDeaths.remove("United States"));
             int rank = 1;
