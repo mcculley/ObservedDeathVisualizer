@@ -29,7 +29,7 @@
         <dependency>
             <groupId>org.enki</groupId>
             <artifactId>core</artifactId>
-            <version>[0.0.29,)</version>
+            <version>[0.0.31,)</version>
         </dependency>
 
         <dependency>

@@ -345,22 +345,20 @@ public class ObservedDeathVisualizer extends JFrame {
         plot(g2d);
     }
 
-    public static record DataPoint(LocalDate date, int count, int averageExpectedCount, int excessLowerEstimate,
-                                   int excessHigherEstimate) {
+    public static record DataPoint(LocalDate date, int count, int averageExpectedCount, int excessEstimate) {
     }
 
 
-    public static record DataLine(@CSVParser.Column(name = "State") String state,
-                                  @CSVParser.Column(name = "Type") String type,
-                                  @CSVParser.Column(name = "Observed Number") int observedNumber,
-                                  @CSVParser.Column(name = "Week Ending Date") LocalDate weekEndingDate,
-                                  @CSVParser.Column(name = "Average Expected Count") int averageExpectedCount,
-                                  @CSVParser.Column(name = "Excess Lower Estimate") int excessLowerEstimate,
-                                  @CSVParser.Column(name = "Excess Higher Estimate") int excessHigherEstimate) {
+    public static record DataLine(@CSVParser.Column("State") String state,
+                                  @CSVParser.Column("Type") String type,
+                                  @CSVParser.Column("Observed Number") int observedNumber,
+                                  @CSVParser.Column("Week Ending Date") LocalDate weekEndingDate,
+                                  @CSVParser.Column("Average Expected Count") int averageExpectedCount,
+                                  @CSVParser.Column("Excess Estimate") int excessEstimate) {
     }
 
-    public static record CensusLine(@CSVParser.Column(name = "Region") String region,
-                                    @CSVParser.Column(name = "Population") int population) {
+    public static record CensusLine(@CSVParser.Column("Region") String region,
+                                    @CSVParser.Column("Population") int population) {
     }
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
@@ -378,7 +376,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
         final Function<DataLine, DataPoint> lineToDataPoint =
                 (line) -> new DataPoint(line.weekEndingDate, line.observedNumber, line.averageExpectedCount,
-                        line.excessLowerEstimate, line.excessHigherEstimate);
+                        line.excessEstimate);
 
         final Function<DataLine, String> regionClassifier = (line) -> line.state;
         final Map<String, List<DataPoint>> regions =
@@ -409,8 +407,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final DataPoint first = l.get(0);
             final DataPoint second = l.get(1);
             final DataPoint n = new DataPoint(first.date, first.count + second.count, 0,
-                    first.excessLowerEstimate + second.excessLowerEstimate, first.excessHigherEstimate +
-                    second.excessHigherEstimate);
+                    first.excessEstimate + second.excessEstimate);
             reduced.add(n);
         }
 
@@ -466,7 +463,7 @@ public class ObservedDeathVisualizer extends JFrame {
     private static Map<String, Integer> excessDeaths(final Map<String, List<DataPoint>> regionData) {
         return regionData.entrySet().stream().collect(Collectors.toMap((e) -> e.getKey(),
                 (e) -> e.getValue().stream().filter((i) -> i.date.compareTo(LocalDate.parse("2020-01-01")) >= 0)
-                        .mapToInt((i) -> i.excessLowerEstimate).sum()));
+                        .mapToInt((i) -> i.excessEstimate).sum()));
     }
 
     private static void writeCSV(final Map<String, Integer> census, final Map<String, List<DataPoint>> data)
