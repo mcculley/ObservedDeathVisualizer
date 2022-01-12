@@ -59,6 +59,8 @@ import static tech.units.indriya.unit.Units.RADIAN;
  * <p>
  * This code is released under the MIT License.
  */
+// TODO: generate SVG?
+// TODO: generate movie
 public class ObservedDeathVisualizer extends JFrame {
 
     private final String region;
@@ -96,8 +98,7 @@ public class ObservedDeathVisualizer extends JFrame {
                                                     final List<DataPoint> data) {
         final List<DataPoint> filteredOutRemainder =
                 data.stream().filter((p) -> p.date.getMonthValue() <= 8).toList();
-        final List<DataPoint> d = data;
-        final Map<Integer, Integer> deathsByYear = d.stream()
+        final Map<Integer, Integer> deathsByYear = data.stream()
                 .collect(Collectors.groupingBy((p) -> p.date.getYear(), Collectors.summingInt((p) -> p.count)));
         final Map<Integer, Double> change = new HashMap<>();
         for (int i = 2018; i <= 2021; i++) {
@@ -111,7 +112,7 @@ public class ObservedDeathVisualizer extends JFrame {
         change.forEach((key, value) -> System.err.printf("%d %d %.2f%%\n", key, deathsByYear.get(key),
                 value * 100));
 
-        final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).get();
+        final DataPoint maxKilled = data.stream().max(Comparator.comparingInt(o -> o.count)).orElseThrow();
         System.err.printf("week with most deaths: %s (%d)\n", maxKilled.date, maxKilled.count);
 
         System.err.println(data.stream().sorted(Comparator.comparingInt(o -> o.count)).toList());
@@ -120,7 +121,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static DataPoint lastGoodDataPoint(final List<DataPoint> l) {
         return l.stream().filter((e) -> e.date.compareTo(incompleteDataDate) <= 0)
-                .max(Comparator.comparing(DataPoint::date)).get();
+                .max(Comparator.comparing(DataPoint::date)).orElseThrow();
     }
 
     private double distanceAlongDuration(final LocalDate l) {
@@ -226,15 +227,15 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     private static LocalDate minDate(final List<DataPoint> points) {
-        return points.stream().map((p) -> p.date).min(Comparator.naturalOrder()).get();
+        return points.stream().map((p) -> p.date).min(Comparator.naturalOrder()).orElseThrow();
     }
 
     private static LocalDate maxDate(final List<DataPoint> points) {
-        return points.stream().map((p) -> p.date).max(Comparator.naturalOrder()).get();
+        return points.stream().map((p) -> p.date).max(Comparator.naturalOrder()).orElseThrow();
     }
 
     private static int maxCount(final List<DataPoint> points) {
-        return points.stream().mapToInt((p) -> p.count).max().getAsInt();
+        return points.stream().mapToInt((p) -> p.count).max().orElseThrow();
     }
 
     private Stroke getStroke(final LocalDate date, final float width) {
@@ -362,7 +363,7 @@ public class ObservedDeathVisualizer extends JFrame {
 
     private static Stream<Map.Entry<String, List<DataPoint>>> splitRegions(final String[] header,
                                                                            final List<String[]> lines) {
-        final Map<Class, Function<String, Object>> typeParsers =
+        final Map<Class<?>, Function<String, Object>> typeParsers =
                 Map.of(int.class, (s) -> s.isEmpty() ? 0 : Integer.parseInt(s));
 
         final CSVParser<DataLine> p =
@@ -418,7 +419,7 @@ public class ObservedDeathVisualizer extends JFrame {
                                                 final Map<String, List<DataPoint>> regionData) throws IOException {
         final Map<String, List<DataPoint>> merged = mergeNYC(regionData);
         final LocalDate latestGoodDataDate = merged.values().stream().map(ObservedDeathVisualizer::lastGoodDataPoint)
-                .max(Comparator.comparing(DataPoint::date)).get().date;
+                .max(Comparator.comparing(DataPoint::date)).orElseThrow().date();
         final Map<String, Optional<DataPoint>> lastGoodDataPoint = merged.entrySet().stream().collect(
                 Collectors.toMap(Map.Entry::getKey,
                         (e) -> e.getValue().stream().filter((x) -> x.date.compareTo(latestGoodDataDate) == 0)
@@ -448,7 +449,18 @@ public class ObservedDeathVisualizer extends JFrame {
 
         writeCSV(census, merged);
         writeCSVTriples(census, merged);
+    }
 
+    private static Map<Integer, Integer> byYear(final List<DataPoint> points) {
+        return points.stream()
+                .collect(Collectors.groupingBy(p -> p.date.getYear(), Collectors.summingInt(p -> p.count)));
+    }
+
+    private static Map<String, Map<Integer, Integer>> deathsByYear(final Map<String, List<DataPoint>> regionData) {
+        // FIXME: use a Collector
+        final Map<String, Map<Integer, Integer>> m = new HashMap<>();
+        regionData.forEach((k, v) -> m.put(k, byYear(v)));
+        return m;
     }
 
     /**
@@ -583,6 +595,12 @@ public class ObservedDeathVisualizer extends JFrame {
         }
     }
 
+    private static void dumpTotalDeathsByYear(final Map<String, List<DataPoint>> regionData) throws IOException {
+        final Map<String, Map<Integer, Integer>> byYear = deathsByYear(regionData);
+        System.out.println("total deaths by year");
+        byYear.forEach((k, v) -> System.out.println(k + ": " + v));
+    }
+
     public static void main(final String[] args) throws IOException, CsvException {
         final Map<String, Integer> census = parseCensus();
         System.err.println("census=" + census);
@@ -627,6 +645,8 @@ public class ObservedDeathVisualizer extends JFrame {
         dumpExcessDeaths(regionData);
         System.out.println();
         dumpExcessDeathsPerCapitaCumulative(census, mergeNYC(regionData));
+        System.out.println();
+        dumpTotalDeathsByYear(regionData);
     }
 
 }
