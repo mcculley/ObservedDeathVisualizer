@@ -90,6 +90,8 @@ public class ObservedDeathVisualizer extends JFrame {
         yearColors.put(2019, Color.BLUE);
         yearColors.put(2020, Color.RED);
         yearColors.put(2021, Color.GREEN);
+        yearColors.put(2022, Color.ORANGE);
+        yearColors.put(2023, Color.YELLOW);
 
         dumpStatistics(census, region, data);
     }
@@ -97,14 +99,13 @@ public class ObservedDeathVisualizer extends JFrame {
     private synchronized static void dumpStatistics(final Map<String, Integer> census, final String region,
                                                     final List<DataPoint> data) {
         final List<DataPoint> filteredOutRemainder =
-                data.stream().filter((p) -> p.date.getMonthValue() <= 8).toList();
+                data.stream().filter(p -> p.date.getMonthValue() <= 8).toList();
         final Map<Integer, Integer> deathsByYear = data.stream()
-                .collect(Collectors.groupingBy((p) -> p.date.getYear(), Collectors.summingInt((p) -> p.count)));
+                .collect(Collectors.groupingBy(p -> p.date.getYear(), Collectors.summingInt(p -> p.count)));
         final Map<Integer, Double> change = new HashMap<>();
-        for (int i = 2018; i <= 2021; i++) {
+        for (int i = 2018; i <= 2022; i++) {
             change.put(i,
-                    (((double) (deathsByYear.get(i) - deathsByYear.get(i - 1))) /
-                            (double) deathsByYear.get(i - 1)));
+                    (((double) (deathsByYear.get(i) - deathsByYear.get(i - 1))) / (double) deathsByYear.get(i - 1)));
         }
 
         System.err.printf(region + ":\n");
@@ -464,7 +465,7 @@ public class ObservedDeathVisualizer extends JFrame {
     }
 
     /**
-     * Compute the excess deaths in 2020 and 2021 so far.
+     * Compute the excess deaths in 2020 and later.
      * <p>
      * This uses the CDC data field "Excess Lower Estimate".
      *
@@ -560,7 +561,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Map<String, Integer> sortedByDeaths =
                     Collections.sortByValue(excessDeathsByRegion, Comparator.reverseOrder()).stream()
                             .collect(Collections.toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue));
-            System.out.println("Cumulative U.S. excess deaths (lower estimate) in 2020 and 2021: " +
+            System.out.println("Cumulative U.S. excess deaths (lower estimate) after 2020-01-01: " +
                     NumberFormat.getInstance().format(sortedByDeaths.remove("United States")));
             int rank = 1;
             for (final Map.Entry<String, Integer> e : sortedByDeaths.entrySet()) {
@@ -585,7 +586,7 @@ public class ObservedDeathVisualizer extends JFrame {
             final Map<String, Double> sortedByDeaths =
                     Collections.sortByValue(perCapitaDeathsPerRegion, Comparator.reverseOrder()).stream()
                             .collect(Collections.toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue));
-            System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) in 2020 and 2021: %.2f\n",
+            System.out.printf("Cumulative U.S. excess deaths per %s (lower estimate) after 2020-01-01: %.2f\n",
                     NumberFormat.getInstance().format(unit), sortedByDeaths.remove("United States"));
             int rank = 1;
             for (final Map.Entry<String, Double> e : sortedByDeaths.entrySet()) {
